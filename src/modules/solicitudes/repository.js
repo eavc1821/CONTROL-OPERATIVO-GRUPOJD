@@ -22,6 +22,45 @@ async function createSolicitud({ proveedor_id, usuario_id, tipo_pago, notas, tot
   return rows[0];
 }
 
+
+async function createSolicitudTx(
+  client,
+  {
+    proveedor_id,
+    usuario_id,
+    tipo_pago,
+    notas,
+    total,
+    fecha_solicitud,
+    descripcion,
+    categoria_id,
+    empresa_id
+  }
+) {
+  const q = `
+    INSERT INTO solicitudes 
+      (proveedor_id, usuario_id, tipo_pago, notas, total, fecha_solicitud, descripcion, categoria_id, empresa_id)
+    VALUES
+      ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    RETURNING *
+  `;
+
+  const { rows } = await client.query(q, [
+    proveedor_id,
+    usuario_id,
+    tipo_pago,
+    notas,
+    total || 0,
+    fecha_solicitud,
+    descripcion,
+    categoria_id,
+    empresa_id
+  ]);
+
+  return rows[0];
+}
+
+
 async function update(id, { proveedor_id, total, tipo_pago, descripcion, notas, empresaId}) {
   const q = `
     UPDATE solicitudes
@@ -248,6 +287,7 @@ async function findPagosBySolicitud(empresaId, solicitudId) {
 
 module.exports = {
   createSolicitud,
+  createSolicitudTx,
   update,
   findAll,
   findById,

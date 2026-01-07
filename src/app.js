@@ -9,6 +9,7 @@ const categoriasRoutes = require('./modules/categorias/categorias.routes');
 const empresasRoutes = require('./modules/empresas/empresas.routes');
 const empresaMiddleware = require('./middlewares/empresa');
 const bitacoraRoutes = require("./modules/bitacora/routes");
+const aprobacionesRoutes = require("./modules/aprobaciones/aprobaciones.routes");
 
 const cors = require("cors");
 const path = require("path");
@@ -41,7 +42,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 
-
+app.use("/api/v1/aprobaciones", aprobacionesRoutes);
 app.use('/api/v1/solicitudes', solicitudesRoutes);
 app.use('/api/v1/proveedores', proveedoresRoutes);
 app.use('/api/v1/usuarios', usuariosRoutes);

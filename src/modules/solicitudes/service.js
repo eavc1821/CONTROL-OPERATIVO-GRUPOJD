@@ -4,18 +4,63 @@ const pool = require('../../core/db');
 const bitacora = require('../bitacora/service');
 const assertCtx = require("../../utils/assertSolicitudCtx");
 const pagoRepo = require("../pagos/pagos.repository");
+const aprobacionesRepo = require("../aprobaciones/repository");
+const { buildWhatsAppApprovalMessage } = require("../aprobaciones/messageBuilder");
 
 async function create(ctx, payload) {
   assertCtx(ctx);
 
-  const data = {
-    ...payload,
-    usuario_id: ctx.usuarioId,
-    empresa_id: ctx.empresaId
-  };
+  const client = await pool.connect();
 
-  const solicitud = await repo.createSolicitud(data);
+  let solicitud;
+  let tokens;
 
+  try {
+    await client.query("BEGIN");
+
+    // 1️⃣ Datos base de la solicitud
+    const data = {
+      ...payload,
+      usuario_id: ctx.usuarioId,
+      empresa_id: ctx.empresaId
+    };
+
+    // 2️⃣ Crear solicitud
+    solicitud = await repo.createSolicitudTx(client, data);
+
+    // 3️⃣ Obtener aprobadores
+    const aprobadores = await repo.findAprobadoresByEmpresaTx(
+      client,
+      ctx.empresaId
+    );
+
+    if (!aprobadores || aprobadores.length < 2) {
+      throw new Error("No hay suficientes aprobadores configurados");
+    }
+
+    const usuariosIds = aprobadores.slice(0, 2).map(u => u.id);
+
+    // 4️⃣ Crear aprobaciones + tokens
+    tokens = await aprobacionesRepo.crearAprobacionesInicialesTx(
+      client,
+      solicitud.id,
+      usuariosIds
+    );
+
+    await client.query("COMMIT");
+
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  // ===============================
+  // 🔔 LÓGICA FUERA DE TRANSACCIÓN
+  // ===============================
+
+  // 5️⃣ Bitácora
   await bitacora.registrar(
     {
       usuario_id: ctx.usuarioId,
@@ -29,8 +74,42 @@ async function create(ctx, payload) {
     }
   );
 
+  // 6️⃣ Notificar aprobadores (WhatsApp)
+  for (const { usuario_id, token } of tokens) {
+    const aprobador = await usuariosRepo.findContactoById(usuario_id);
+
+    if (!aprobador || !aprobador.telefono) {
+      console.warn(
+        `Aprobador ${usuario_id} sin teléfono, no se envía WhatsApp`
+      );
+      continue;
+    }
+
+    const { message } = buildWhatsAppApprovalMessage({
+      solicitud: {
+        correlativo: solicitud.correlativo,
+        proveedor_nombre: payload.proveedor_nombre || "Proveedor",
+        total: solicitud.total,
+        tipo_pago: solicitud.tipo_pago,
+        descripcion: solicitud.descripcion
+      },
+      token,
+      baseUrl: process.env.APP_BASE_URL
+    });
+
+    await sendWhatsApp({
+      telefono: aprobador.telefono,
+      message,
+      metadata: {
+        solicitud_id: solicitud.id,
+        correlativo: solicitud.correlativo
+      }
+    });
+  }
+
   return solicitud;
 }
+
 
 async function list(ctx, filters) {
   assertCtx(ctx);
