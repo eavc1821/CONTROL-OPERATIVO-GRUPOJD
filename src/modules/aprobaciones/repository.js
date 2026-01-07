@@ -90,11 +90,37 @@ async function crearAprobacionesInicialesTx(client, solicitudId, usuariosIds) {
   return rows;
 }
 
+async function previewByToken(token) {
+  const q = `
+    SELECT
+      s.correlativo,
+      p.nombre AS proveedor,
+      s.total,
+      s.tipo_pago,
+      s.descripcion,
+      sa.estado AS aprobacion_estado,
+      s.estado AS solicitud_estado
+    FROM solicitud_aprobaciones sa
+    JOIN solicitudes s ON s.id = sa.solicitud_id
+    JOIN proveedores p ON p.id = s.proveedor_id
+    WHERE sa.token = $1
+  `;
+
+  const { rows } = await pool.query(q, [token]);
+  return rows[0];
+}
+
+module.exports = {
+  ...module.exports,
+  previewByToken
+};
+
 
 module.exports = {
   lockByTokenTx,
   marcarAprobacionTx,
   anularOtrasAprobacionesTx,
   actualizarSolicitudTx,
-  crearAprobacionesInicialesTx
+  crearAprobacionesInicialesTx,
+  previewByToken
 };

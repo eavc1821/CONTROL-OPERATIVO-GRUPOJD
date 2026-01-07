@@ -11,4 +11,8 @@ router.post(
   ctrl.resolve
 );
 
+router.get(
+  "/preview",
+  ctrl.preview);
+
 module.exports = router;

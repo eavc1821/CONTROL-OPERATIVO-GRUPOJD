@@ -20,6 +20,33 @@ async function resolve(req, res, next) {
   }
 }
 
+
+async function preview(req, res, next) {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({
+        ok: false,
+        message: "Token requerido"
+      });
+    }
+
+    const solicitud = await service.previewByToken(token);
+
+    res.json({
+      ok: true,
+      solicitud
+    });
+  } catch (err) {
+    res.status(404).json({
+      ok: false,
+      message: err.message
+    });
+  }
+}
+
 module.exports = {
-  resolve
+  resolve,
+  preview
 };

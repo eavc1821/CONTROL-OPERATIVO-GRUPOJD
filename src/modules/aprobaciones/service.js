@@ -89,6 +89,31 @@ async function resolveByToken({ token, accion, comentario, ip, userAgent }) {
   }
 }
 
+async function previewByToken(token) {
+  const data = await repo.previewByToken(token);
+
+  if (!data) {
+    throw new Error("Token inválido");
+  }
+
+  if (data.solicitud_estado !== "pendiente") {
+    throw new Error("La solicitud ya fue resuelta");
+  }
+
+  if (data.aprobacion_estado !== "pendiente") {
+    throw new Error("Este token ya fue utilizado");
+  }
+
+  return {
+    correlativo: data.correlativo,
+    proveedor: data.proveedor,
+    total: data.total,
+    tipo_pago: data.tipo_pago,
+    descripcion: data.descripcion
+  };
+}
+
 module.exports = {
-  resolveByToken
+  resolveByToken,
+  previewByToken
 };
