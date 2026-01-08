@@ -6,6 +6,8 @@ const assertCtx = require("../../utils/assertSolicitudCtx");
 const pagoRepo = require("../pagos/pagos.repository");
 const aprobacionesRepo = require("../aprobaciones/repository");
 const { buildWhatsAppApprovalMessage } = require("../aprobaciones/messageBuilder");
+const usuariosRepo = require("../usuarios/repository");
+
 
 async function create(ctx, payload) {
   assertCtx(ctx);

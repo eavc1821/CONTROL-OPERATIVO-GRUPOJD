@@ -284,6 +284,20 @@ async function findPagosBySolicitud(empresaId, solicitudId) {
   return rows;
 }
 
+async function findAprobadoresByEmpresaTx(client, empresaId) {
+  const q = `
+    SELECT u.id, u.nombre, u.telefono
+    FROM aprobadores a
+    JOIN usuarios u ON u.id = a.usuario_id
+    WHERE a.empresa_id = $1
+      AND a.activo = true
+    ORDER BY a.orden ASC
+  `;
+  const { rows } = await client.query(q, [empresaId]);
+  return rows;
+}
+
+
 
 module.exports = {
   createSolicitud,
@@ -296,5 +310,6 @@ module.exports = {
   updateSolicitudFacturaData,
   getTotalPagadoBySolicitudTx,
   insertPagoTx,
-  findPagosBySolicitud
+  findPagosBySolicitud,
+  findAprobadoresByEmpresaTx
 };
