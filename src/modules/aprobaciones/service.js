@@ -77,7 +77,7 @@ async function resolveByToken({ token, accion, comentario, ip, userAgent }) {
         solicitud_id: solicitud.id,
         correlativo: solicitud.correlativo,
         estado_final: nuevoEstadoSolicitud,
-        canal: "whatsapp"
+        canal: "email"
       }
     }
   );
@@ -115,13 +115,18 @@ async function previewByToken(token) {
     status: "OK",
     solicitud: {
       correlativo: data.correlativo,
+      empresa: data.empresa,
+      solicitante: data.solicitante,
       proveedor: data.proveedor,
+      categoria: data.categoria,
       total: data.total,
       tipo_pago: data.tipo_pago,
+      fecha_solicitud: data.fecha_solicitud,
       descripcion: data.descripcion
     }
   };
 }
+
 
 
 module.exports = {

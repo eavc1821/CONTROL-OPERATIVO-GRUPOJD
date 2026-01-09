@@ -93,17 +93,28 @@ async function crearAprobacionesInicialesTx(client, solicitudId, usuariosIds) {
 async function previewByToken(token) {
   const q = `
     SELECT
+      s.id,
       s.correlativo,
-      p.nombre AS proveedor,
       s.total,
       s.tipo_pago,
       s.descripcion,
+      s.fecha_solicitud,
+
+      e.nombre AS empresa,
+      u.nombre AS solicitante,
+
+      p.nombre AS proveedor,
+      c.nombre AS categoria,
+
       sa.estado AS aprobacion_estado,
       s.estado AS solicitud_estado
     FROM solicitud_aprobaciones sa
     JOIN solicitudes s ON s.id = sa.solicitud_id
+    JOIN empresas e ON e.id = s.empresa_id
+    JOIN usuarios u ON u.id = s.usuario_id
     JOIN proveedores p ON p.id = s.proveedor_id
-    WHERE sa.token = $1
+    LEFT JOIN categorias c ON c.id = s.categoria_id
+    WHERE sa.token = $1;
   `;
 
   const { rows } = await pool.query(q, [token]);
@@ -113,38 +124,22 @@ async function previewByToken(token) {
 
 async function findByTokenForUpdate(client, token) {
   const q = `
-    SELECT *
-    FROM aprobaciones
-    WHERE token = $1
+    SELECT
+      sa.id,
+      sa.solicitud_id,
+      sa.usuario_id,
+      sa.estado,
+      s.estado AS solicitud_estado,
+      s.empresa_id,
+      s.correlativo
+    FROM solicitud_aprobaciones sa
+    JOIN solicitudes s ON s.id = sa.solicitud_id
+    WHERE sa.token = $1
     FOR UPDATE
   `;
   const { rows } = await client.query(q, [token]);
   return rows[0];
 }
-
-async function updateAprobacionEstado(client, id, estado, comentario = null) {
-  const q = `
-    UPDATE aprobaciones
-    SET estado = $1,
-        comentario = $2,
-        updated_at = NOW()
-    WHERE id = $3
-  `;
-  await client.query(q, [estado, comentario, id]);
-}
-
-async function expirarOtrasAprobaciones(client, solicitudId, aprobacionId) {
-  const q = `
-    UPDATE aprobaciones
-    SET estado = 'expirada',
-        updated_at = NOW()
-    WHERE solicitud_id = $1
-      AND id <> $2
-      AND estado = 'pendiente'
-  `;
-  await client.query(q, [solicitudId, aprobacionId]);
-}
-
 
 
 module.exports = {
@@ -155,7 +150,4 @@ module.exports = {
   crearAprobacionesInicialesTx,
   previewByToken,
   findByTokenForUpdate,
-  updateAprobacionEstado,
-  expirarOtrasAprobaciones
-
 };
