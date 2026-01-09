@@ -5,7 +5,6 @@ const bitacora = require('../bitacora/service');
 const assertCtx = require("../../utils/assertSolicitudCtx");
 const pagoRepo = require("../pagos/pagos.repository");
 const aprobacionesRepo = require("../aprobaciones/repository");
-const { buildWhatsAppApprovalMessage } = require("../aprobaciones/messageBuilder");
 const usuariosRepo = require("../usuarios/repository");
 const { buildApprovalEmail } = require("../aprobaciones/emailBuilder");
 const { sendEmail } = require("../../core/notifications/email");
