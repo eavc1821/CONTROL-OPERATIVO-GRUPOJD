@@ -28,15 +28,7 @@ function buildLinks(baseUrl, token) {
 }
 
 function buildWhatsAppApprovalMessage({ solicitud, token, baseUrl }) {
-  if (!solicitud || !token || !baseUrl) {
-    throw new Error("Faltan datos para construir el mensaje de aprobación");
-  }
-
-  const links = buildLinks(baseUrl, token);
-
-  const descripcion = solicitud.descripcion
-    ? solicitud.descripcion.slice(0, 180)
-    : "Sin descripción";
+  const link = `${baseUrl}/aprobaciones/preview?token=${encodeURIComponent(token)}`;
 
   const message = `
 📄 *Solicitud de aprobación*
@@ -47,20 +39,13 @@ function buildWhatsAppApprovalMessage({ solicitud, token, baseUrl }) {
 💳 *Tipo de pago:* ${normalizeTipoPago(solicitud.tipo_pago)}
 📝 *Detalle:* ${descripcion}
 
-👉 *Acción requerida*
-✅ Aprobar: ${links.approve}
-❌ Rechazar: ${links.reject}
+👉 *Revisar solicitud:*
+${link}
 
-🔍 Ver detalle completo:
-${links.view}
-
-⏳ Con que una persona apruebe es suficiente.
+⏳ Con que una persona apruebe o rechace es suficiente.
 `.trim();
 
-  return {
-    message,
-    links
-  };
+  return { message, link };
 }
 
 module.exports = {

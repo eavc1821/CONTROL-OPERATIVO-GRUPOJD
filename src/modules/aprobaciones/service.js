@@ -9,76 +9,82 @@ async function resolveByToken({ token, accion, comentario, ip, userAgent }) {
   try {
     await client.query("BEGIN");
 
-    // 1️⃣ Bloquear aprobación
-    const aprobacion = await repo.lockByTokenTx(client, token);
+    // 1️⃣ Buscar aprobación y bloquear
+    const aprobacion = await repo.findByTokenForUpdate(client, token);
 
     if (!aprobacion) {
-      throw new Error("Token inválido o inexistente");
+      return { status: "TOKEN_INVALIDO" };
     }
 
     if (aprobacion.estado !== "pendiente") {
-      throw new Error("Este token ya fue utilizado");
+      return { status: "SOLICITUD_RESUELTA" };
     }
 
-    if (aprobacion.solicitud_estado !== "pendiente") {
-      throw new Error("La solicitud ya fue resuelta");
+    // 2️⃣ Bloquear solicitud
+    const solicitud = await client.query(
+      `SELECT * FROM solicitudes WHERE id = $1 FOR UPDATE`,
+      [aprobacion.solicitud_id]
+    ).then(r => r.rows[0]);
+
+    if (!solicitud || solicitud.estado !== "pendiente") {
+      return { status: "SOLICITUD_RESUELTA" };
     }
 
-    // 2️⃣ Resolver aprobación
-    const estadoAprobacion =
+    // 3️⃣ Resolver
+    const nuevoEstadoSolicitud =
       accion === "aprobar" ? "aprobada" : "rechazada";
 
-    await repo.marcarAprobacionTx(
-      client,
-      token,
-      estadoAprobacion,
-      comentario,
-      ip,
-      userAgent
+    await client.query(
+      `
+      UPDATE solicitudes
+      SET estado = $1,
+          aprobado_por = $2,
+          fecha_aprobacion = NOW()
+      WHERE id = $3
+      `,
+      [nuevoEstadoSolicitud, aprobacion.usuario_id, solicitud.id]
     );
 
-    // 3️⃣ Anular las demás
-    await repo.anularOtrasAprobacionesTx(
+    await repo.updateAprobacionEstado(
       client,
-      aprobacion.solicitud_id,
-      token
+      aprobacion.id,
+      accion === "aprobar" ? "aprobada" : "rechazada",
+      comentario
     );
 
-    // 4️⃣ Resolver solicitud
-    const estadoSolicitud =
-      accion === "aprobar" ? "aprobada" : "anulada";
-
-    const solicitud = await repo.actualizarSolicitudTx(
+    // 4️⃣ Expirar la otra aprobación
+    await repo.expirarOtrasAprobaciones(
       client,
-      aprobacion.solicitud_id,
-      estadoSolicitud,
-      aprobacion.usuario_id
+      solicitud.id,
+      aprobacion.id
     );
-
-    if (!solicitud) {
-      throw new Error("No se pudo actualizar la solicitud");
-    }
 
     await client.query("COMMIT");
 
-    // 5️⃣ Bitácora (fuera de la transacción)
     await bitacora.registrar(
-      { usuario_id: aprobacion.usuario_id },
-      {
-        modulo: "aprobaciones",
-        accion: accion.toUpperCase(),
-        descripcion: `Resolución por token de la solicitud ${solicitud.correlativo}`,
-        data_nueva: {
-          solicitud_id: solicitud.id,
-          estado: estadoSolicitud
-        }
+    {
+      usuario_id: aprobacion.usuario_id,
+      empresa_id: solicitud.empresa_id
+    },
+    {
+      modulo: "aprobaciones",
+      accion: accion === "aprobar" ? "APROBAR" : "RECHAZAR",
+      descripcion:
+        accion === "aprobar"
+          ? `Aprobó la solicitud ${solicitud.correlativo}`
+          : `Rechazó la solicitud ${solicitud.correlativo}`,
+      data_nueva: {
+        solicitud_id: solicitud.id,
+        correlativo: solicitud.correlativo,
+        estado_final: nuevoEstadoSolicitud,
+        canal: "whatsapp"
       }
-    );
+    }
+  );
 
     return {
-      solicitud_id: solicitud.id,
-      estado: solicitud.estado,
-      aprobado_por: aprobacion.usuario_id
+      status: "OK",
+      resultado: nuevoEstadoSolicitud
     };
 
   } catch (err) {
@@ -89,29 +95,34 @@ async function resolveByToken({ token, accion, comentario, ip, userAgent }) {
   }
 }
 
+
 async function previewByToken(token) {
   const data = await repo.previewByToken(token);
 
   if (!data) {
-    throw new Error("Token inválido");
+    return { status: "TOKEN_INVALIDO" };
   }
 
   if (data.solicitud_estado !== "pendiente") {
-    throw new Error("La solicitud ya fue resuelta");
+    return { status: "SOLICITUD_RESUELTA" };
   }
 
   if (data.aprobacion_estado !== "pendiente") {
-    throw new Error("Este token ya fue utilizado");
+    return { status: "SOLICITUD_RESUELTA" };
   }
 
   return {
-    correlativo: data.correlativo,
-    proveedor: data.proveedor,
-    total: data.total,
-    tipo_pago: data.tipo_pago,
-    descripcion: data.descripcion
+    status: "OK",
+    solicitud: {
+      correlativo: data.correlativo,
+      proveedor: data.proveedor,
+      total: data.total,
+      tipo_pago: data.tipo_pago,
+      descripcion: data.descripcion
+    }
   };
 }
+
 
 module.exports = {
   resolveByToken,

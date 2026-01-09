@@ -7,6 +7,9 @@ const pagoRepo = require("../pagos/pagos.repository");
 const aprobacionesRepo = require("../aprobaciones/repository");
 const { buildWhatsAppApprovalMessage } = require("../aprobaciones/messageBuilder");
 const usuariosRepo = require("../usuarios/repository");
+const { buildApprovalEmail } = require("../aprobaciones/emailBuilder");
+const { sendEmail } = require("../../core/notifications/email");
+
 
 
 async function create(ctx, payload) {
@@ -30,14 +33,14 @@ async function create(ctx, payload) {
     // 2️⃣ Crear solicitud
     solicitud = await repo.createSolicitudTx(client, data);
 
-    // 3️⃣ Obtener aprobadores
+    // 3️⃣ Obtener aprobadores configurados
     const aprobadores = await repo.findAprobadoresByEmpresaTx(
       client,
       ctx.empresaId
     );
 
-    if (!aprobadores || aprobadores.length < 2) {
-      throw new Error("No hay suficientes aprobadores configurados");
+    if (!aprobadores || aprobadores.length === 0) {
+      throw new Error("No hay aprobadores configurados para la empresa");
     }
 
     const usuariosIds = aprobadores.slice(0, 2).map(u => u.id);
@@ -76,38 +79,51 @@ async function create(ctx, payload) {
     }
   );
 
-  // 6️⃣ Notificar aprobadores (WhatsApp)
-  for (const { usuario_id, token } of tokens) {
+
+  // 6️⃣ Notificar aprobadores (Email)
+for (const { usuario_id, token } of tokens) {
+  try {
     const aprobador = await usuariosRepo.findContactoById(usuario_id);
 
-    if (!aprobador || !aprobador.telefono) {
+    if (!aprobador || !aprobador.email) {
       console.warn(
-        `Aprobador ${usuario_id} sin teléfono, no se envía WhatsApp`
+        `Aprobador ${usuario_id} sin email, no se envía notificación`
       );
       continue;
     }
 
-    const { message } = buildWhatsAppApprovalMessage({
+    const email = buildApprovalEmail({
       solicitud: {
         correlativo: solicitud.correlativo,
         proveedor_nombre: payload.proveedor_nombre || "Proveedor",
         total: solicitud.total,
-        tipo_pago: solicitud.tipo_pago,
-        descripcion: solicitud.descripcion
+        tipo_pago: solicitud.tipo_pago
       },
       token,
       baseUrl: process.env.APP_BASE_URL
     });
 
-    await sendWhatsApp({
-      telefono: aprobador.telefono,
-      message,
+    await sendEmail({
+      to: aprobador.email,
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
       metadata: {
         solicitud_id: solicitud.id,
-        correlativo: solicitud.correlativo
+        aprobador_id: usuario_id,
+        canal: "email"
       }
     });
+
+  } catch (err) {
+    console.error("❌ Error enviando email de aprobación", {
+      solicitud_id: solicitud.id,
+      usuario_id,
+      error: err.message
+    });
   }
+}
+
 
   return solicitud;
 }

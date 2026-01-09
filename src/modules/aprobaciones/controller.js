@@ -11,10 +11,35 @@ async function resolve(req, res, next) {
       userAgent: req.headers["user-agent"]
     });
 
-    res.status(200).json({
-      ok: true,
-      data: result
-    });
+    switch (result.status) {
+      case "TOKEN_INVALIDO":
+        return res.status(400).json({
+          ok: false,
+          message: "El enlace no es válido"
+        });
+
+      case "SOLICITUD_RESUELTA":
+        return res.status(200).json({
+          ok: false,
+          message: "Esta solicitud ya fue resuelta"
+        });
+
+      case "OK":
+        return res.status(200).json({
+          ok: true,
+          message:
+            result.resultado === "aprobada"
+              ? "Solicitud aprobada correctamente"
+              : "Solicitud rechazada correctamente"
+        });
+
+      default:
+        return res.status(500).json({
+          ok: false,
+          message: "Estado de aprobación no reconocido"
+        });
+    }
+
   } catch (err) {
     next(err);
   }
@@ -32,19 +57,39 @@ async function preview(req, res, next) {
       });
     }
 
-    const solicitud = await service.previewByToken(token);
+    const result = await service.previewByToken(token);
 
-    res.json({
-      ok: true,
-      solicitud
-    });
+    switch (result.status) {
+      case "TOKEN_INVALIDO":
+        return res.status(400).json({
+          ok: false,
+          message: "El enlace no es válido"
+        });
+
+      case "SOLICITUD_RESUELTA":
+        return res.status(200).json({
+          ok: false,
+          message: "Esta solicitud ya fue resuelta"
+        });
+
+      case "OK":
+        return res.status(200).json({
+          ok: true,
+          solicitud: result.solicitud
+        });
+
+      default:
+        return res.status(500).json({
+          ok: false,
+          message: "Estado de previsualización no reconocido"
+        });
+    }
+
   } catch (err) {
-    res.status(404).json({
-      ok: false,
-      message: err.message
-    });
+    next(err);
   }
 }
+
 
 module.exports = {
   resolve,

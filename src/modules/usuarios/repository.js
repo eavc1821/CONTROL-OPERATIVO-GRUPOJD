@@ -10,6 +10,14 @@ async function findById(id) {
   return rows[0];
 }
 
+async function findContactoById(id) {
+  const { rows } = await pool.query(
+    "SELECT id, nombre, email FROM usuarios WHERE id = $1",
+    [id]
+  );
+  return rows[0];
+}
+
 async function create({ nombre, email, password_hash, rol }) {
   const q = `
     INSERT INTO usuarios (nombre, email, password_hash, rol)
@@ -115,6 +123,7 @@ async function updatePassword(id, passwordHash) {
 module.exports = {
   findByEmail,
   findById,
+  findContactoById,
   create,
   getEmpresasByUsuario,
   getAllEmpresas,

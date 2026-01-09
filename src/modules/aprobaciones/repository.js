@@ -110,10 +110,41 @@ async function previewByToken(token) {
   return rows[0];
 }
 
-module.exports = {
-  ...module.exports,
-  previewByToken
-};
+
+async function findByTokenForUpdate(client, token) {
+  const q = `
+    SELECT *
+    FROM aprobaciones
+    WHERE token = $1
+    FOR UPDATE
+  `;
+  const { rows } = await client.query(q, [token]);
+  return rows[0];
+}
+
+async function updateAprobacionEstado(client, id, estado, comentario = null) {
+  const q = `
+    UPDATE aprobaciones
+    SET estado = $1,
+        comentario = $2,
+        updated_at = NOW()
+    WHERE id = $3
+  `;
+  await client.query(q, [estado, comentario, id]);
+}
+
+async function expirarOtrasAprobaciones(client, solicitudId, aprobacionId) {
+  const q = `
+    UPDATE aprobaciones
+    SET estado = 'expirada',
+        updated_at = NOW()
+    WHERE solicitud_id = $1
+      AND id <> $2
+      AND estado = 'pendiente'
+  `;
+  await client.query(q, [solicitudId, aprobacionId]);
+}
+
 
 
 module.exports = {
@@ -122,5 +153,9 @@ module.exports = {
   anularOtrasAprobacionesTx,
   actualizarSolicitudTx,
   crearAprobacionesInicialesTx,
-  previewByToken
+  previewByToken,
+  findByTokenForUpdate,
+  updateAprobacionEstado,
+  expirarOtrasAprobaciones
+
 };
