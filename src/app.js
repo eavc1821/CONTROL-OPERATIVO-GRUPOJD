@@ -8,7 +8,7 @@ const reportesRoutes = require('./modules/reportes/reportes.routes');
 const categoriasRoutes = require('./modules/categorias/categorias.routes');
 const empresasRoutes = require('./modules/empresas/empresas.routes');
 const empresaMiddleware = require('./middlewares/empresa');
-const debugRoutes = require('./routes/debug.routes');
+const debugRoutes = require('./routes/debug,routes');
 const bitacoraRoutes = require("./modules/bitacora/routes");
 const aprobacionesRoutes = require("./modules/aprobaciones/aprobaciones.routes");
 
