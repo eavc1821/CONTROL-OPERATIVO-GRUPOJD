@@ -80,7 +80,7 @@ async function crearAprobacionesInicialesTx(client, solicitudId, usuariosIds) {
       canal
     )
     VALUES ${usuariosIds.map((_, i) =>
-      `($1, $${i + 2}, gen_random_uuid(), 'pendiente', 'whatsapp')`
+      `($1, $${i + 2}, gen_random_uuid(), 'pendiente', 'email')`
     ).join(",")}
     RETURNING usuario_id, token
   `;
