@@ -43,7 +43,7 @@ async function create(ctx, payload) {
       throw new Error("No hay aprobadores configurados para la empresa");
     }
 
-    const usuariosIds = aprobadores.slice(0, 2).map(u => u.id);
+    const usuariosIds = aprobadores.slice(0, 2).map(u => u.usuario_id);
 
     // 4️⃣ Crear aprobaciones + tokens
     tokens = await aprobacionesRepo.crearAprobacionesInicialesTx(
