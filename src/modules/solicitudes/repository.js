@@ -287,18 +287,17 @@ async function findPagosBySolicitud(empresaId, solicitudId) {
 async function findAprobadoresByEmpresaTx(client, empresaId) {
   const q = `
     SELECT
-    a.usuario_id,
-    a.orden,
-    u.nombre,
-    u.email
+      a.usuario_id,
+      a.orden,
+      u.nombre,
+      u.email
     FROM aprobadores a
     JOIN usuarios u ON u.id = a.usuario_id
-WHERE a.activo = true
-  AND (a.empresa_id = $1 OR a.empresa_id IS NULL)
-ORDER BY
-  CASE WHEN a.empresa_id IS NULL THEN 2 ELSE 1 END,
-  a.orden;
-
+    WHERE a.activo = true
+      AND (a.empresa_id = $1 OR a.empresa_id IS NULL)
+    ORDER BY
+      CASE WHEN a.empresa_id IS NULL THEN 2 ELSE 1 END,
+      a.orden ASC
   `;
   const { rows } = await client.query(q, [empresaId]);
   return rows;
