@@ -5,7 +5,7 @@ const { sendEmail } = require("../core/notifications/email");
 router.get("/test-email", async (req, res) => {
   try {
     await sendEmail({
-      to: "a.carcamo@gjd78.com",
+      to: "solicitudes@gjd78.com",
       subject: "Prueba SMTP Railway + SiteGround",
       text: "Si recibes esto, SMTP está funcionando.",
       html: "<b>SMTP funcionando correctamente</b>"
