@@ -291,11 +291,13 @@ async function findAprobadoresByEmpresaTx(client, empresaId) {
     a.orden,
     u.nombre,
     u.email
-  FROM aprobadores a
-  JOIN usuarios u ON u.id = a.usuario_id
-  WHERE a.empresa_id = $1
-    AND a.activo = true
-  ORDER BY a.orden ASC
+    FROM aprobadores a
+    JOIN usuarios u ON u.id = a.usuario_id
+WHERE a.activo = true
+  AND (a.empresa_id = $1 OR a.empresa_id IS NULL)
+ORDER BY
+  CASE WHEN a.empresa_id IS NULL THEN 2 ELSE 1 END,
+  a.orden;
 
   `;
   const { rows } = await client.query(q, [empresaId]);
