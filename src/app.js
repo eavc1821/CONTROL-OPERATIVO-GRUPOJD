@@ -42,6 +42,52 @@ app.options("*", cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+const fs = require("fs");
+
+app.get("/aprobaciones", async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).send("Enlace inválido");
+    }
+
+    // Llamamos a tu propio backend (sin CORS, sin navegador)
+    const preview = await fetch(
+      `http://localhost:${process.env.PORT || 3000}/api/v1/aprobaciones/preview?token=${token}`
+    ).then(r => r.json());
+
+    if (!preview.ok) {
+      return res.send(`<h3>${preview.message || "Solicitud no disponible"}</h3>`);
+    }
+
+    const solicitud = preview.solicitud;
+
+    let html = fs.readFileSync(
+      path.join(__dirname, "../public/aprobaciones.html"),
+      "utf8"
+    );
+
+    html = html
+      .replace("{{correlativo}}", solicitud.correlativo)
+      .replace("{{empresa}}", solicitud.empresa)
+      .replace("{{solicitante}}", solicitud.solicitante)
+      .replace("{{proveedor}}", solicitud.proveedor)
+      .replace("{{categoria}}", solicitud.categoria || "—")
+      .replace("{{total}}", solicitud.total)
+      .replace("{{tipo_pago}}", solicitud.tipo_pago)
+      .replace("{{fecha}}", new Date(solicitud.fecha_solicitud).toLocaleDateString())
+      .replace("{{descripcion}}", solicitud.descripcion || "Sin descripción")
+      .replace("{{token}}", token);
+
+    res.send(html);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error al cargar la solicitud");
+  }
+});
+
+
 
 app.use("/api/v1/aprobaciones", aprobacionesRoutes);
 app.use('/api/v1/solicitudes', solicitudesRoutes);

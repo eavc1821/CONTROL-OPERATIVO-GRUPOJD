@@ -24,14 +24,42 @@ async function resolve(req, res, next) {
           message: "Esta solicitud ya fue resuelta"
         });
 
-      case "OK":
+      case "OK": {
+        const mensaje =
+          result.resultado === "aprobada"
+            ? "Solicitud aprobada correctamente"
+            : "Solicitud rechazada correctamente";
+
+        const aceptaHtml =
+          req.headers.accept && req.headers.accept.includes("text/html");
+
+        if (aceptaHtml) {
+          return res.send(`
+            <html>
+              <head>
+                <meta charset="utf-8"/>
+                <title>Resultado</title>
+                <style>
+                  body { font-family: system-ui; background:#f4f6f8; padding:40px; }
+                  .card { background:white; max-width:500px; margin:auto; padding:30px; border-radius:10px; box-shadow:0 10px 25px rgba(0,0,0,.1); text-align:center;}
+                  .ok { color:#16a34a; font-size:18px; }
+                </style>
+              </head>
+              <body>
+                <div class="card">
+                  <div class="ok">${mensaje}</div>
+                  <p>Ya puede cerrar esta ventana.</p>
+                </div>
+              </body>
+            </html>
+          `);
+        }
+
         return res.status(200).json({
           ok: true,
-          message:
-            result.resultado === "aprobada"
-              ? "Solicitud aprobada correctamente"
-              : "Solicitud rechazada correctamente"
+          message: mensaje
         });
+      }
 
       default:
         return res.status(500).json({
@@ -39,7 +67,6 @@ async function resolve(req, res, next) {
           message: "Estado de aprobación no reconocido"
         });
     }
-
   } catch (err) {
     next(err);
   }

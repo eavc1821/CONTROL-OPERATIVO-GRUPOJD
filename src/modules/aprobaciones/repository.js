@@ -24,7 +24,8 @@ async function marcarAprobacionTx(client, token, estado, comentario, ip, ua) {
       comentario = $2,
       responded_at = NOW(),
       ip_origen = $3,
-      user_agent = $4
+      user_agent = $4,
+      token = NULL
     WHERE token = $5
     RETURNING *
   `;

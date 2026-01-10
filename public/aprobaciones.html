@@ -102,25 +102,7 @@
     .reject {
       background: var(--reject);
       color: #fff;
-    }
-
-    .disabled {
-      background: var(--disabled);
-      cursor: not-allowed;
-    }
-
-    .result {
-      text-align: center;
-      font-size: 15px;
-      font-weight: 500;
-    }
-
-    .result.success {
-      color: var(--approve);
-    }
-
-    .result.error {
-      color: var(--reject);
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -128,146 +110,62 @@
 <body>
   <div class="container">
     <div class="card">
-      <h1 id="title">Cargando solicitud…</h1>
-      <div class="subtitle" id="subtitle"></div>
-
-      <div id="content" style="display:none;">
-        <div class="section">
-          <div class="row">
-            <div class="label">Solicitud</div>
-            <div class="value" id="correlativo"></div>
-          </div>
-          <div class="row">
-            <div class="label">Empresa</div>
-            <div class="value" id="empresa"></div>
-          </div>
-
-          <div class="row">
-            <div class="label">Solicitante</div>
-            <div class="value" id="solicitante"></div>
-          </div>
-          <div class="row">
-            <div class="label">Proveedor</div>
-            <div class="value" id="proveedor"></div>
-          </div>
-          <div class="row">
-            <div class="label">Categoría</div>
-            <div class="value" id="categoria"></div>
-          </div>
-          <div class="row">
-            <div class="label">Monto</div>
-            <div class="value" id="total"></div>
-          </div>
-          <div class="row">
-            <div class="label">Tipo de pago</div>
-            <div class="value" id="tipo_pago"></div>
-          </div>
-          <div class="row">
-            <div class="label">Fecha</div>
-            <div class="value" id="fecha"></div>
-          </div>
-          <div class="description" id="descripcion"></div>
-        </div>
-
-        <div class="divider"></div>
-
-        <button id="actionBtn"></button>
+      <h1>Resolución de solicitud</h1>
+      <div class="subtitle">
+        Revise la información y confirme su decisión.
       </div>
 
-      <div id="result" class="result"></div>
+      <div class="section">
+        <div class="row">
+          <div class="label">Solicitud</div>
+          <div class="value">{{correlativo}}</div>
+        </div>
+        <div class="row">
+          <div class="label">Empresa</div>
+          <div class="value">{{empresa}}</div>
+        </div>
+
+        <div class="row">
+          <div class="label">Solicitante</div>
+          <div class="value">{{solicitante}}</div>
+        </div>
+        <div class="row">
+          <div class="label">Proveedor</div>
+          <div class="value">{{proveedor}}</div>
+        </div>
+        <div class="row">
+          <div class="label">Categoría</div>
+          <div class="value">{{categoria}}</div>
+        </div>
+        <div class="row">
+          <div class="label">Monto</div>
+          <div class="value">{{total}}</div>
+        </div>
+        <div class="row">
+          <div class="label">Tipo de pago</div>
+          <div class="value">{{tipo_pago}}</div>
+        </div>
+        <div class="row">
+          <div class="label">Fecha</div>
+          <div class="value">{{fecha}}</div>
+        </div>
+        <div class="description">{{descripcion}}</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <form method="POST" action="/api/v1/aprobaciones/resolve">
+        <input type="hidden" name="token" value="{{token}}" />
+
+        <button class="approve" name="accion" value="aprobar">
+          Aprobar solicitud
+        </button>
+
+        <button class="reject" name="accion" value="rechazar">
+          Rechazar solicitud
+        </button>
+      </form>
     </div>
   </div>
-
-  <script>
-    const API_BASE = "https://control-operativo-grupojd-production.up.railway.app";
-  </script>
-
-
-<script>
-  const params = new URLSearchParams(window.location.search);
-  const token = params.get("token");
-
-  if (!token) {
-    document.getElementById("title").innerText = "Enlace inválido";
-    document.getElementById("subtitle").innerText =
-      "El enlace proporcionado no es válido.";
-    throw new Error("Token missing");
-  }
-
-  async function loadSolicitud() {
-    const res = await fetch(
-      `${API_BASE}/api/v1/aprobaciones/preview?token=${token}`
-    );
-    const data = await res.json();
-
-    if (!data.ok) {
-      document.getElementById("title").innerText = "Solicitud no disponible";
-      document.getElementById("subtitle").innerText =
-        data.message || "Esta solicitud ya fue resuelta.";
-      return;
-    }
-
-    document.getElementById("title").innerText = "Resolución de solicitud";
-    document.getElementById("subtitle").innerText =
-      "Revise la información y confirme su decisión.";
-
-    document.getElementById("correlativo").innerText = data.solicitud.correlativo;
-    document.getElementById("empresa").innerText = data.solicitud.empresa;
-    document.getElementById("solicitante").innerText = data.solicitud.solicitante;
-    document.getElementById("proveedor").innerText = data.solicitud.proveedor;
-    document.getElementById("categoria").innerText = data.solicitud.categoria || "—";
-    document.getElementById("total").innerText = data.solicitud.total;
-    document.getElementById("tipo_pago").innerText = data.solicitud.tipo_pago;
-    document.getElementById("fecha").innerText =
-      new Date(data.solicitud.fecha_solicitud).toLocaleDateString();
-    document.getElementById("descripcion").innerText =
-      data.solicitud.descripcion || "Sin descripción";
-
-
-    const btn = document.getElementById("actionBtn");
-    btn.innerText = "Aprobar solicitud";
-    btn.className = "approve";
-    btn.onclick = () => submitAction("aprobar");
-
-    document.getElementById("content").style.display = "block";
-  }
-
-  async function submitAction(accion) {
-    const btn = document.getElementById("actionBtn");
-
-    const confirmacion = confirm(
-      accion === "aprobar"
-        ? "¿Confirma que desea aprobar esta solicitud?"
-        : "¿Confirma que desea rechazar esta solicitud?"
-    );
-
-    if (!confirmacion) return;
-
-    btn.disabled = true;
-    btn.classList.add("disabled");
-
-    const res = await fetch(`${API_BASE}/api/v1/aprobaciones/resolve`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, accion })
-    });
-
-    const data = await res.json();
-
-    document.getElementById("content").style.display = "none";
-
-    const result = document.getElementById("result");
-    result.className =
-      "result " + (data.ok ? "success" : "error");
-
-    result.innerText = data.ok
-      ? accion === "aprobar"
-        ? "La solicitud fue aprobada correctamente."
-        : "La solicitud fue rechazada."
-      : data.message || "No fue posible completar la acción.";
-  }
-
-  loadSolicitud();
-</script>
 </body>
 </html>

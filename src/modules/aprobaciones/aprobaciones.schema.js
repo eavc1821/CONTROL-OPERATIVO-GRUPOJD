@@ -2,7 +2,7 @@
 const { z } = require("zod");
 
 const resolveAprobacionSchema = z.object({
-  token: z.string().uuid("Token inválido"),
+  token: z.string().min(20, "Token inválido"),
   accion: z.enum(["aprobar", "rechazar"]),
   comentario: z.string().optional().nullable()
 });
