@@ -53,6 +53,7 @@ app.use('/api/v1/categorias', categoriasRoutes);
 app.use('/api/v1/empresas', empresasRoutes);
 app.use("/api/v1/bitacora", bitacoraRoutes);
 app.use("/api/v1/debug", debugRoutes);
+app.use(express.static("public"));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 
