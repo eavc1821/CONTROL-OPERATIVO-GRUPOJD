@@ -45,19 +45,21 @@ async function resolveByToken({ token, accion, comentario, ip, userAgent }) {
       [nuevoEstadoSolicitud, aprobacion.usuario_id, solicitud.id]
     );
 
-    await repo.updateAprobacionEstado(
-      client,
-      aprobacion.id,
-      accion === "aprobar" ? "aprobada" : "rechazada",
-      comentario
-    );
+   await repo.marcarAprobacionTx(
+    client,
+    token,
+    accion === "aprobar" ? "aprobada" : "rechazada",
+    comentario,
+    ip,
+    userAgent
+  );
 
-    // 4️⃣ Expirar la otra aprobación
-    await repo.expirarOtrasAprobaciones(
-      client,
-      solicitud.id,
-      aprobacion.id
-    );
+  await repo.anularOtrasAprobacionesTx(
+    client,
+    solicitud.id,
+    token
+  );
+
 
     await client.query("COMMIT");
 
