@@ -8,6 +8,7 @@ const aprobacionesRepo = require("../aprobaciones/repository");
 const usuariosRepo = require("../usuarios/repository");
 const { buildApprovalEmail } = require("../aprobaciones/emailBuilder");
 const { sendEmail } = require("../../core/notifications/email");
+const proveedorRepo = require("../proveedores/repository");
 
 
 
@@ -90,11 +91,11 @@ for (const { usuario_id, token } of tokens) {
       );
       continue;
     }
-    
-    const proveedor = await repo.getProveedorByIdTx(
-      client,
+
+    const proveedor = await proveedorRepo.getById(
       solicitud.proveedor_id
     );
+
     const email = buildApprovalEmail({
       solicitud: {
         correlativo: solicitud.correlativo,
