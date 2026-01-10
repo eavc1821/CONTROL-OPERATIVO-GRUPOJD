@@ -18,6 +18,7 @@ const path = require("path");
 const app = express();
 const allowedOrigins = [
   "https://control-operativo.gjd78.com",
+  "https://control-operativo-grupojd-production.up.railway.app",
   "http://localhost:5173"
 ];
 
@@ -73,10 +74,9 @@ app.get("/aprobaciones", async (req, res) => {
       .replace("{{empresa}}", solicitud.empresa)
       .replace("{{solicitante}}", solicitud.solicitante)
       .replace("{{proveedor}}", solicitud.proveedor)
-      .replace("{{categoria}}", solicitud.categoria || "—")
       .replace("{{total}}", solicitud.total)
       .replace("{{tipo_pago}}", solicitud.tipo_pago)
-      .replace("{{fecha}}", new Date(solicitud.fecha_solicitud).toLocaleDateString())
+      .replace("{{fecha}}", new Date(solicitud.fecha_solicitud).toLocaleDateString("es-ES"))
       .replace("{{descripcion}}", solicitud.descripcion || "Sin descripción")
       .replace("{{token}}", token);
 
