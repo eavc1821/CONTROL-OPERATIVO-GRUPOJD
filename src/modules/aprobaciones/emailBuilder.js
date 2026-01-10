@@ -22,7 +22,7 @@ function buildApprovalEmail({ solicitud, token, baseUrl }) {
     throw new Error("Faltan datos para construir el email de aprobación");
   }
 
-  const link = `${baseUrl}/aprobaciones/preview?token=${encodeURIComponent(token)}`;
+  const link = `${baseUrl}/aprobaciones.html?token=${encodeURIComponent(token)}`;
 
   const subject = `Solicitud pendiente de aprobación – ${solicitud.correlativo}`;
 
