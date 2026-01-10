@@ -1,3 +1,5 @@
+const pool = require("../../core/db");
+
 // src/modules/aprobaciones/aprobaciones.repository.js
 async function lockByTokenTx(client, token) {
   const q = `
