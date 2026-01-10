@@ -90,11 +90,15 @@ for (const { usuario_id, token } of tokens) {
       );
       continue;
     }
-
+    
+    const proveedor = await repo.getProveedorByIdTx(
+      client,
+      solicitud.proveedor_id
+    );
     const email = buildApprovalEmail({
       solicitud: {
         correlativo: solicitud.correlativo,
-        proveedor_nombre: payload.proveedor_nombre || "Proveedor",
+        proveedor_nombre: proveedor.nombre,
         total: solicitud.total,
         tipo_pago: solicitud.tipo_pago
       },
