@@ -219,9 +219,9 @@ async function approveWithFile(ctx, id, payload, file) {
       `
       UPDATE solicitudes
       SET proveedor_cai = $1
-      WHERE id = $2 AND empresa_id = $3
+      WHERE id = $2
       `,
-      [proveedorCai, id, ctx.empresaId]
+      [proveedorCai, id]
     );
 
     // Datos de factura
