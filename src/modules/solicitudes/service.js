@@ -191,10 +191,16 @@ async function approveWithFile(ctx, id, payload, file) {
   try {
     await client.query("BEGIN");
 
-    const solicitud = await repo.findById(ctx.empresaId, id);
+    // 🔥 Leer de la tabla real, no de la vista
+    const { rows } = await client.query(
+      `SELECT proveedor_id, correlativo FROM solicitudes WHERE id = $1`,
+      [id]
+    );
+
+    const solicitud = rows[0];
     if (!solicitud) throw new Error("Solicitud no encontrada");
 
-    // Validar CAI
+    // Validar CAI del proveedor
     const caiResult = await client.query(
       `SELECT cai FROM proveedores WHERE id = $1`,
       [solicitud.proveedor_id]
@@ -223,9 +229,6 @@ async function approveWithFile(ctx, id, payload, file) {
       `,
       [proveedorCai, id]
     );
-
-    // Datos de factura
-    // await updateSolicitudFacturaData(client, id, payload);
 
     // Registrar aprobación
     await client.query(
@@ -262,6 +265,7 @@ async function approveWithFile(ctx, id, payload, file) {
     client.release();
   }
 }
+
 
 
 // RECHAZAR con comentario (también usando updateEstadoTx)
