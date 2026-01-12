@@ -30,6 +30,28 @@ async function resolveByToken({ token, accion, comentario, ip, userAgent }) {
       return { status: "SOLICITUD_RESUELTA" };
     }
 
+    // 🔥 Congelar CAI del proveedor (solo si va a aprobar)
+    if (accion === "aprobar") {
+      const caiResult = await client.query(
+        `SELECT cai FROM proveedores WHERE id = $1`,
+        [solicitud.proveedor_id]
+      );
+
+      const proveedorCai = caiResult.rows[0]?.cai;
+      if (!proveedorCai) {
+        throw new Error("El proveedor no tiene CAI configurado");
+      }
+
+      await client.query(
+        `
+        UPDATE solicitudes
+        SET proveedor_cai = $1
+        WHERE id = $2
+        `,
+        [proveedorCai, solicitud.id]
+      );
+    }
+
     // 3️⃣ Resolver
     const nuevoEstadoSolicitud =
       accion === "aprobar" ? "aprobada" : "rechazada";
@@ -45,44 +67,43 @@ async function resolveByToken({ token, accion, comentario, ip, userAgent }) {
       [nuevoEstadoSolicitud, aprobacion.usuario_id, solicitud.id]
     );
 
-   await repo.marcarAprobacionTx(
-    client,
-    token,
-    accion === "aprobar" ? "aprobada" : "rechazada",
-    comentario,
-    ip,
-    userAgent
-  );
+    await repo.marcarAprobacionTx(
+      client,
+      token,
+      accion === "aprobar" ? "aprobada" : "rechazada",
+      comentario,
+      ip,
+      userAgent
+    );
 
-  await repo.anularOtrasAprobacionesTx(
-    client,
-    solicitud.id,
-    token
-  );
-
+    await repo.anularOtrasAprobacionesTx(
+      client,
+      solicitud.id,
+      token
+    );
 
     await client.query("COMMIT");
 
     await bitacora.registrar(
-    {
-      usuario_id: aprobacion.usuario_id,
-      empresa_id: solicitud.empresa_id
-    },
-    {
-      modulo: "aprobaciones",
-      accion: accion === "aprobar" ? "APROBAR" : "RECHAZAR",
-      descripcion:
-        accion === "aprobar"
-          ? `Aprobó la solicitud ${solicitud.correlativo}`
-          : `Rechazó la solicitud ${solicitud.correlativo}`,
-      data_nueva: {
-        solicitud_id: solicitud.id,
-        correlativo: solicitud.correlativo,
-        estado_final: nuevoEstadoSolicitud,
-        canal: "email"
+      {
+        usuario_id: aprobacion.usuario_id,
+        empresa_id: solicitud.empresa_id
+      },
+      {
+        modulo: "aprobaciones",
+        accion: accion === "aprobar" ? "APROBAR" : "RECHAZAR",
+        descripcion:
+          accion === "aprobar"
+            ? `Aprobó la solicitud ${solicitud.correlativo}`
+            : `Rechazó la solicitud ${solicitud.correlativo}`,
+        data_nueva: {
+          solicitud_id: solicitud.id,
+          correlativo: solicitud.correlativo,
+          estado_final: nuevoEstadoSolicitud,
+          canal: "email"
+        }
       }
-    }
-  );
+    );
 
     return {
       status: "OK",
