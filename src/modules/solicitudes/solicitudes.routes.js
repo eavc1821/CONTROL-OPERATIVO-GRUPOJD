@@ -92,7 +92,6 @@ router.post(
   auth,
   empresa,
   requirePermiso("solicitudes.aprobar"),
-  upload.single('factura'),
   validate(approveSolicitudSchema),
   ctrl.approveWithFile
 );
