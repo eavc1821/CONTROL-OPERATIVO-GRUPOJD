@@ -14,10 +14,6 @@ const createSolicitudSchema = z.object({
 
 const approveSolicitudSchema = z.object({
   comentario: z.string().optional(),
-  numero_factura: z.string().min(1, "El número de factura es requerido"),
-  fecha_factura: z
-  .string()
-  .min(1, "La fecha de factura es requerida"),
 });
 
 const rejectSolicitudSchema = z.object({
