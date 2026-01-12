@@ -220,11 +220,18 @@ async function approveWithFile(ctx, id, payload, file) {
 
     if (!updated) throw new Error("No se pudo aprobar la solicitud");
 
+
+    console.log("DEBUG_APROBAR", {
+      solicitudId: id,
+      proveedorId: solicitud.proveedor_id,
+      proveedorCai
+    });
+
     // Congelar CAI
     await client.query(
       `
       UPDATE solicitudes
-      SET proveedor_cai = $1
+      SET proveedor_cai = $1 || '___DEBUG'
       WHERE id = $2
       `,
       [proveedorCai, id]
