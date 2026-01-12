@@ -92,7 +92,6 @@ router.post(
   auth,
   empresa,
   requirePermiso("solicitudes.aprobar"),
-  validate(approveSolicitudSchema),
   ctrl.approveWithFile
 );
 
