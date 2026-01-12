@@ -482,7 +482,7 @@ async function registrarPago(ctx, solicitudId, payload, file) {
       monto,
       fecha_pago: payload.fecha_pago,
       metodo_pago: payload.metodo_pago,
-      referencia: payload.referencia,
+      referencia: payload.numero_factura,
       notas: payload.notas,
       usuario_id: ctx.usuarioId,
       empresa_id: ctx.empresaId
