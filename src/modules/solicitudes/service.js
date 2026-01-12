@@ -358,12 +358,13 @@ async function updateFactura(empresaId, id, file) {
     );
 
     // 3️⃣ Guardar archivo físico
-    const saved = await storage.saveFileLocal({
+    const saved = await storage.saveFileS3({
       tempPath: file.path,
       originalName: file.originalname,
       entidad: "solicitud",
       entidadId: id,
-      correlativo: solicitud.correlativo
+      correlativo: solicitud.correlativo,
+      empresaId: empresaId
     });
 
     // 4️⃣ Insertar nueva factura como VIGENTE
@@ -493,13 +494,15 @@ async function registrarPago(ctx, solicitudId, payload, file) {
       fecha_factura: payload.fecha_factura
     });
 
-    const saved = await storage.saveFileLocal({
+    const saved = await storage.saveFileS3({
       tempPath: file.path,
       originalName: file.originalname,
       entidad: "pago",
       entidadId: pago.id,
-      correlativo: solicitud.correlativo
+      correlativo: solicitud.correlativo,
+      empresaId: ctx.empresaId
     });
+
 
     await client.query(
       `
