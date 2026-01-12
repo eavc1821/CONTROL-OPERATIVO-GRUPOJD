@@ -1,42 +1,40 @@
-const fs = require('fs');
-const fsp = fs.promises;
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
+const AWS = require("aws-sdk");
 
+const s3 = new AWS.S3({
+  region: process.env.AWS_REGION,
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+});
 
-function ensureDirSync(dir) {
-if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+const BUCKET = process.env.AWS_S3_BUCKET;
+const PUBLIC_URL = process.env.AWS_S3_PUBLIC_URL;
+
+async function saveFileS3({ tempPath, originalName, entidad, entidadId, correlativo, empresaId }) {
+  const ext = path.extname(originalName);
+  const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
+
+  const key = `empresas/${empresaId}/${entidad}s/${correlativo || entidadId}/${Date.now()}_${safeName}`;
+
+  const fileStream = fs.createReadStream(tempPath);
+
+  const upload = await s3.upload({
+    Bucket: BUCKET,
+    Key: key,
+    Body: fileStream,
+    ContentType: "application/pdf",
+    ACL: "private"
+  }).promise();
+
+  fs.unlinkSync(tempPath); // limpiar tmp
+
+  return {
+    path: `s3://${BUCKET}/${key}`,
+    url: `${PUBLIC_URL}/${key}`
+  };
 }
-
-
-function sanitizeName(name) {
-return name.replace(/[^a-zA-Z0-9._-]/g, '_');
-}
-
-
-async function saveFileLocal({ tempPath, originalName, entidad, entidadId, correlativo }) {
-const base = path.join(__dirname, '../../uploads', `${entidad}_${entidadId}`);
-ensureDirSync(base);
-const ext = path.extname(originalName) || '.pdf';
-const filename = `factura_${correlativo || entidadId}${ext}`;
-const dest = path.join(base, sanitizeName(filename));
-// mover el archivo (sync está bien si viene de multer.diskStorage)
-fs.renameSync(tempPath, dest);
-return { path: dest, url: `${process.env.BASE_URL}/uploads/${entidad}_${entidadId}/${sanitizeName(filename)}` };
-}
-
-
-async function saveBufferAsFile({ buffer, originalName, entidad, entidadId, correlativo, mimetype }) {
-const base = path.join(__dirname, '../../uploads', `${entidad}_${entidadId}`);
-ensureDirSync(base);
-const ext = path.extname(originalName) || (mimetype ? '.' + mimetype.split('/')[1] : '.pdf');
-const filename = `${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeName(originalName || 'file')}${ext}`;
-const full = path.join(base, filename);
-await fsp.writeFile(full, buffer);
-return { path: full, url: `${process.env.BASE_URL}/uploads/${entidad}_${entidadId}/${sanitizeName(filename)}` };
-}
-
 
 module.exports = {
-saveFileLocal,
-saveBufferAsFile
+  saveFileS3
 };
