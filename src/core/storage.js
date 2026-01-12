@@ -1,33 +1,35 @@
 const fs = require("fs");
 const path = require("path");
-const AWS = require("aws-sdk");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
-const s3 = new AWS.S3({
+const s3 = new S3Client({
   region: process.env.AWS_REGION,
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  }
 });
 
 const BUCKET = process.env.AWS_S3_BUCKET;
 const PUBLIC_URL = process.env.AWS_S3_PUBLIC_URL;
 
 async function saveFileS3({ tempPath, originalName, entidad, entidadId, correlativo, empresaId }) {
-  const ext = path.extname(originalName);
   const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
 
   const key = `empresas/${empresaId}/${entidad}s/${correlativo || entidadId}/${Date.now()}_${safeName}`;
 
   const fileStream = fs.createReadStream(tempPath);
 
-  const upload = await s3.upload({
-    Bucket: BUCKET,
-    Key: key,
-    Body: fileStream,
-    ContentType: "application/pdf",
-    ACL: "private"
-  }).promise();
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+      Body: fileStream,
+      ContentType: "application/pdf"
+    })
+  );
 
-  fs.unlinkSync(tempPath); // limpiar tmp
+  fs.unlinkSync(tempPath);
 
   return {
     path: `s3://${BUCKET}/${key}`,

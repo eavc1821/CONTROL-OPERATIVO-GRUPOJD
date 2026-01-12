@@ -8,6 +8,7 @@
         "migrate": "echo \"Run migrations manually: psql -f migrations/001_create_core_tables.sql\""
     },
     "dependencies": {
+        "@aws-sdk/client-s3": "^3.966.0",
         "bcrypt": "^5.1.0",
         "cors": "^2.8.5",
         "dotenv": "^16.0.0",
