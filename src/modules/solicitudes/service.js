@@ -225,7 +225,7 @@ async function approveWithFile(ctx, id, payload, file) {
     );
 
     // Datos de factura
-    await updateSolicitudFacturaData(client, id, payload);
+    // await updateSolicitudFacturaData(client, id, payload);
 
     // Registrar aprobación
     await client.query(
@@ -475,6 +475,11 @@ async function registrarPago(ctx, solicitudId, payload, file) {
       notas: payload.notas,
       usuario_id: ctx.usuarioId,
       empresa_id: ctx.empresaId
+    });
+
+    await updateSolicitudFacturaData(client, solicitudId, {
+      numero_factura: payload.numero_factura,
+      fecha_factura: payload.fecha_factura
     });
 
     const saved = await storage.saveFileLocal({

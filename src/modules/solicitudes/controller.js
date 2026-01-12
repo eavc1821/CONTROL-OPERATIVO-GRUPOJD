@@ -261,12 +261,14 @@ async function registrarPago(req, res, next) {
 
     const solicitudId = Number(req.params.id);
 
-    const {
+   const {
       monto,
       metodo_pago,
       fecha_pago,
       referencia,
-      notas
+      notas,
+      numero_factura,
+      fecha_factura
     } = req.body;
 
     const file = req.file;
@@ -286,6 +288,13 @@ async function registrarPago(req, res, next) {
       });
     }
 
+    if (!numero_factura || !fecha_factura) {
+      return res.status(400).json({
+        ok: false,
+        message: "Número y fecha de factura son obligatorios"
+      });
+    }
+
     if (!file) {
       return res.status(400).json({
         ok: false,
@@ -298,7 +307,9 @@ async function registrarPago(req, res, next) {
       metodo_pago,
       fecha_pago: fecha_pago || new Date(),
       referencia: referencia || null,
-      notas: notas || null
+      notas: notas || null,
+      numero_factura,
+      fecha_factura
     };
 
     const result = await service.registrarPago(
