@@ -241,23 +241,42 @@ async function getProveedorPerfil(proveedorId, empresaId) {
   // 3️⃣ DETALLE DE SOLICITUDES
   const detalleQuery = `
     SELECT
-      v.solicitud_id,
+      s.id AS solicitud_id,
       s.correlativo,
       p.nombre AS proveedor,
       s.tipo_pago,
+      s.estado,
+      s.fecha_solicitud,
+
       v.total_solicitud,
       v.total_pagado,
       v.saldo_restante AS saldo,
-      s.estado,
-      s.fecha_solicitud,
-      v.fecha_factura,
-      v.numero_factura
-    FROM vw_total_pagado_por_solicitud v
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    JOIN proveedores p ON p.id = s.proveedor_id
+
+      pa.id AS pago_id,
+      pa.monto,
+      pa.fecha_pago,
+      pa.numero_factura,
+      pa.fecha_factura,
+      pa.factura_url
+
+    FROM solicitudes s
+
+    JOIN proveedores p 
+      ON p.id = s.proveedor_id
+
+    JOIN vw_total_pagado_por_solicitud v 
+      ON v.solicitud_id = s.id
+    AND v.empresa_id   = s.empresa_id
+
+    LEFT JOIN pagos pa
+      ON pa.solicitud_id = s.id
+    AND pa.empresa_id   = s.empresa_id
+
     WHERE s.proveedor_id = $1
-      AND ($2 = 0 OR v.empresa_id = $2)
-    ORDER BY s.fecha_solicitud DESC;
+      AND ($2 = 0 OR s.empresa_id = $2)
+
+    ORDER BY s.fecha_solicitud DESC, pa.fecha_factura DESC, pa.created_at DESC;
+
   `;
 
   const detalleResult = await pool.query(detalleQuery, [proveedorId, empresaId]);
