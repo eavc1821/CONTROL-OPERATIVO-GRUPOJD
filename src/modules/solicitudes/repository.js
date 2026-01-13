@@ -93,26 +93,42 @@ async function update(id, { proveedor_id, total, tipo_pago, descripcion, notas, 
 async function findAll(empresaId) {
   const q = `
     SELECT
-      solicitud_id AS id,
-      correlativo,
-      proveedor_id,
-      proveedor_nombre,
-      proveedor_cai,
-      categoria_nombre,
-      total_solicitud AS total,
-      estado,
-      tipo_pago,
-      numero_factura,
-      fecha_factura,
-      created_at
-    FROM vw_resumen_solicitudes
-    WHERE empresa_id = $1
-    ORDER BY solicitud_id DESC
-    LIMIT 100
+      s.solicitud_id AS id,
+      s.correlativo,
+      s.proveedor_id,
+      s.proveedor_nombre,
+      s.proveedor_cai,
+      s.categoria_nombre,
+      s.total_solicitud AS total,
+      s.estado,
+      s.tipo_pago,
+      s.numero_factura,
+      s.fecha_factura,
+      s.created_at,
+
+      ult_pago.id AS ultimo_pago_id,
+      ult_pago.factura_url AS ultima_factura_url
+
+    FROM vw_resumen_solicitudes s
+
+    LEFT JOIN LATERAL (
+      SELECT p.id, p.factura_url
+      FROM pagos p
+      WHERE p.solicitud_id = s.solicitud_id
+        AND p.empresa_id   = s.empresa_id
+      ORDER BY p.fecha_factura DESC NULLS LAST, p.created_at DESC
+      LIMIT 1
+    ) ult_pago ON true
+
+    WHERE s.empresa_id = $1
+    ORDER BY s.solicitud_id DESC
+    LIMIT 100;
   `;
+
   const { rows } = await pool.query(q, [empresaId]);
   return rows;
 }
+
 
 
 
