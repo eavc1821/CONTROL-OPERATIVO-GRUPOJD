@@ -8,7 +8,6 @@ const reportesRoutes = require('./modules/reportes/reportes.routes');
 const categoriasRoutes = require('./modules/categorias/categorias.routes');
 const empresasRoutes = require('./modules/empresas/empresas.routes');
 const empresaMiddleware = require('./middlewares/empresa');
-const debugRoutes = require('./routes/debug,routes');
 const bitacoraRoutes = require("./modules/bitacora/routes");
 const aprobacionesRoutes = require("./modules/aprobaciones/aprobaciones.routes");
 
@@ -98,7 +97,6 @@ app.use('/api/v1/reportes', reportesRoutes);
 app.use('/api/v1/categorias', categoriasRoutes);
 app.use('/api/v1/empresas', empresasRoutes);
 app.use("/api/v1/bitacora", bitacoraRoutes);
-app.use("/api/v1/debug", debugRoutes);
 app.use(express.static("public"));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
