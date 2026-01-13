@@ -53,15 +53,18 @@ async function updateFactura(ctx, pagoId, file) {
       throw new Error("Pago no encontrado");
     }
 
-    // 🔥 Subir a S3
-    const { url } = await storage.uploadFacturaPago({
+    // 🔥 subir nuevo PDF a S3
+    const saved = await storage.saveFileS3({
+      tempPath: file.path,
+      originalName: file.originalname,
+      entidad: "pago",
+      entidadId: pago.id,
+      correlativo: pago.solicitud_id,
       empresaId: ctx.empresaId,
-      solicitudId: pago.solicitud_id,
-      pagoId: pago.id,
-      file
+      empresaNombre: ctx.empresaNombre
     });
 
-    // 🔥 Actualizar pagos.factura_url
+    // 🔥 actualizar referencia en pagos
     await client.query(
       `
       UPDATE pagos
@@ -70,7 +73,7 @@ async function updateFactura(ctx, pagoId, file) {
       WHERE id = $2
         AND empresa_id = $3
       `,
-      [url, pago.id, ctx.empresaId]
+      [saved.url, pago.id, ctx.empresaId]
     );
 
     await client.query("COMMIT");
@@ -81,11 +84,11 @@ async function updateFactura(ctx, pagoId, file) {
         modulo: "pagos",
         accion: "REEMPLAZAR_FACTURA",
         descripcion: `Reemplazó factura del pago ${pago.id}`,
-        data_nueva: { factura_url: url }
+        data_nueva: { factura_url: saved.url }
       }
     );
 
-    return { url };
+    return { url: saved.url };
 
   } catch (err) {
     await client.query("ROLLBACK");
@@ -94,7 +97,6 @@ async function updateFactura(ctx, pagoId, file) {
     client.release();
   }
 }
-
 
 module.exports = {
   list,
