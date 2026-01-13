@@ -130,6 +130,7 @@ async function findById(empresaId, id) {
       s.fecha_solicitud,
       s.fecha_aprobacion,
       s.empresa_id,
+      e.nombre AS empresa_nombre,
       s.numero_factura,
       s.fecha_factura,
 
@@ -146,6 +147,7 @@ async function findById(empresaId, id) {
       ap.comentario AS comentario_aprobacion,
       ap.created_at AS fecha_aprobacion
     FROM vw_resumen_solicitud s
+    JOIN empresas e ON e.id = s.empresa_id
     LEFT JOIN proveedores p ON p.id = s.proveedor_id
     LEFT JOIN LATERAL (
       SELECT ar.*
