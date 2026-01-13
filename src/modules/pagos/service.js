@@ -39,8 +39,8 @@ async function getFactura(ctx, pagoId) {
 async function updateFactura(ctx, pagoId, file) {
   assertCtx(ctx);
 
-  if (!ctx.usuarioId) {
-    throw new Error("usuarioId obligatorio para reemplazar factura");
+  if (!file) {
+    throw new Error("Debe adjuntar el PDF de la factura");
   }
 
   const client = await pool.connect();
@@ -49,50 +49,28 @@ async function updateFactura(ctx, pagoId, file) {
     await client.query("BEGIN");
 
     const pago = await pagosRepo.getById(pagoId, ctx.empresaId);
-    if (!pago) throw new Error("Pago no encontrado");
-    if (!file) throw new Error("Debe adjuntar el PDF de la factura");
+    if (!pago) {
+      throw new Error("Pago no encontrado");
+    }
 
-    await client.query(
-      `
-      UPDATE archivos
-      SET estado = 'reemplazada'
-      WHERE entidad = 'pago'
-        AND entidad_id = $1
-        AND empresa_id = $2
-        AND estado = 'vigente'
-      `,
-      [pagoId, ctx.empresaId]
-    );
-
-    const saved = await storage.saveFileLocal({
-      tempPath: file.path,
-      originalName: file.originalname,
-      entidad: "pago",
-      entidadId: pagoId,
-      correlativo: pago.solicitud_id
+    // 🔥 Subir a S3
+    const { url } = await storage.uploadFacturaPago({
+      empresaId: ctx.empresaId,
+      solicitudId: pago.solicitud_id,
+      pagoId: pago.id,
+      file
     });
 
+    // 🔥 Actualizar pagos.factura_url
     await client.query(
       `
-      INSERT INTO archivos
-        (entidad, entidad_id, nombre_original, path, url, mimetype, correlativo, estado, empresa_id, created_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,'vigente',$8,NOW())
+      UPDATE pagos
+      SET factura_url = $1,
+          updated_at = NOW()
+      WHERE id = $2
+        AND empresa_id = $3
       `,
-      [
-        "pago",
-        pagoId,
-        file.originalname,
-        saved.path,
-        saved.url,
-        file.mimetype,
-        pago.solicitud_id,
-        ctx.empresaId
-      ]
-    );
-
-    await client.query(
-      `UPDATE pagos SET tiene_factura = true WHERE id = $1`,
-      [pagoId]
+      [url, pago.id, ctx.empresaId]
     );
 
     await client.query("COMMIT");
@@ -102,12 +80,12 @@ async function updateFactura(ctx, pagoId, file) {
       {
         modulo: "pagos",
         accion: "REEMPLAZAR_FACTURA",
-        descripcion: `Reemplazó factura del pago ${pagoId}`,
-        data_nueva: { factura_url: saved.url }
+        descripcion: `Reemplazó factura del pago ${pago.id}`,
+        data_nueva: { factura_url: url }
       }
     );
 
-    return { factura_url: saved.url };
+    return { url };
 
   } catch (err) {
     await client.query("ROLLBACK");
@@ -116,6 +94,7 @@ async function updateFactura(ctx, pagoId, file) {
     client.release();
   }
 }
+
 
 module.exports = {
   list,
