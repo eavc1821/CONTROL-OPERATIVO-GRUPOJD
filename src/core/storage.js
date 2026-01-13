@@ -33,8 +33,7 @@ async function saveFileS3({ tempPath, originalName, entidad, entidadId, correlat
       Bucket: BUCKET,
       Key: key,
       Body: fileStream,
-      ContentType: "application/pdf",
-      ACL: "public-read"
+      ContentType: "application/pdf"
     })
   );
 
