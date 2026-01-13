@@ -107,7 +107,8 @@ for (const { usuario_id, token } of tokens) {
       baseUrl: process.env.APP_BASE_URL
     });
 
-    await sendEmail({
+    // ⚠️ Enviar SIN bloquear la respuesta HTTP
+    sendEmail({
       to: aprobador.email,
       subject: email.subject,
       html: email.html,
@@ -117,17 +118,22 @@ for (const { usuario_id, token } of tokens) {
         aprobador_id: usuario_id,
         canal: "email"
       }
+    }).catch(err => {
+      console.error("❌ Error enviando email de aprobación", {
+        solicitud_id: solicitud.id,
+        usuario_id,
+        error: err.message
+      });
     });
 
   } catch (err) {
-    console.error("❌ Error enviando email de aprobación", {
+    console.error("❌ Error preparando email de aprobación", {
       solicitud_id: solicitud.id,
       usuario_id,
       error: err.message
     });
   }
 }
-
 
   return solicitud;
 }
