@@ -20,24 +20,21 @@ async function getById(ctx, id) {
 async function getFactura(ctx, pagoId) {
   assertCtx(ctx);
 
-  const pago = await pagosRepo.getById(pagoId, ctx.empresaId);
-  if (!pago) return null;
-
   const { rows } = await pool.query(
     `
-    SELECT url, nombre_original
-    FROM archivos
-    WHERE entidad = 'pago'
-      AND entidad_id = $1
+    SELECT factura_url
+    FROM pagos
+    WHERE id = $1
       AND empresa_id = $2
-    ORDER BY created_at DESC
-    LIMIT 1
     `,
     [pagoId, ctx.empresaId]
   );
 
-  return rows[0] || null;
+  if (!rows[0]?.factura_url) return null;
+
+  return rows[0].factura_url;
 }
+
 
 async function updateFactura(ctx, pagoId, file) {
   assertCtx(ctx);

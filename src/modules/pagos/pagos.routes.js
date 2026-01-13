@@ -100,17 +100,17 @@ router.get("/:id/factura", auth, empresa, async (req, res, next) => {
 
     const archivo = await pagosService.getFactura(ctx, id);
 
-    if (!archivo) {
-      return res.status(404).json({
-        ok: false,
-        message: "Este pago no tiene factura asociada"
-      });
-    }
+    if (!facturaUrl) {
+  return res.status(404).json({
+    ok: false,
+    message: "Este pago no tiene factura asociada"
+  });
+}
 
-    res.json({
-      ok: true,
-      data: archivo
-    });
+res.json({
+  ok: true,
+  url: facturaUrl
+});
   } catch (err) {
     next(err);
   }

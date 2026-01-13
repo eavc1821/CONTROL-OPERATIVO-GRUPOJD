@@ -505,28 +505,9 @@ async function registrarPago(ctx, solicitudId, payload, file) {
       empresaNombre: solicitud.empresa_nombre || solicitud.empresa || ""
     });
 
-
     await client.query(
-      `
-      INSERT INTO archivos
-        (entidad, entidad_id, nombre_original, path, url, mimetype, correlativo, empresa_id, created_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
-      `,
-      [
-        "pago",
-        pago.id,
-        file.originalname,
-        saved.path,
-        saved.url,
-        file.mimetype,
-        solicitud.correlativo,
-        ctx.empresaId
-      ]
-    );
-
-    await client.query(
-      `UPDATE pagos SET tiene_factura = true WHERE id = $1`,
-      [pago.id]
+      `UPDATE pagos SET factura_url = $1 WHERE id = $2`,
+      [saved.url, pago.id]
     );
 
     let nuevoEstado = solicitud.estado;

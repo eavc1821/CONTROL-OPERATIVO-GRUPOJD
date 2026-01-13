@@ -15,6 +15,9 @@ async function getById(id, empresaId) {
       p.metodo_pago,
       p.referencia,
       p.notas,
+      p.numero_factura,
+      p.fecha_factura,
+      p.factura_url,
       p.created_at,
       p.updated_at
     FROM pagos p
@@ -25,7 +28,6 @@ async function getById(id, empresaId) {
   const { rows } = await pool.query(q, [id, empresaId]);
   return rows[0] || null;
 }
-
 
 /**
  * Listar pagos (opcionalmente filtrando por solicitud_id)

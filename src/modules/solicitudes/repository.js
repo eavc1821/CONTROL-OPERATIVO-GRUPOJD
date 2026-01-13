@@ -277,6 +277,9 @@ async function findPagosBySolicitud(empresaId, solicitudId) {
       metodo_pago,
       referencia,
       notas,
+      numero_factura,
+      fecha_factura,
+      factura_url,
       created_at
     FROM pagos
     WHERE solicitud_id = $1 AND empresa_id = $2
@@ -285,6 +288,7 @@ async function findPagosBySolicitud(empresaId, solicitudId) {
   const { rows } = await pool.query(q, [solicitudId, empresaId]);
   return rows;
 }
+
 
 async function findAprobadoresByEmpresaTx(client, empresaId) {
   const q = `
