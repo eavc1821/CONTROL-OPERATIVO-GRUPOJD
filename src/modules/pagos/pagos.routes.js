@@ -98,23 +98,25 @@ router.get("/:id/factura", auth, empresa, async (req, res, next) => {
       });
     }
 
-    const archivo = await pagosService.getFactura(ctx, id);
+    const url = await pagosService.getFactura(ctx, id);
 
-    if (!facturaUrl) {
-  return res.status(404).json({
-    ok: false,
-    message: "Este pago no tiene factura asociada"
-  });
-}
+    if (!url) {
+      return res.status(404).json({
+        ok: false,
+        message: "Este pago no tiene factura asociada"
+      });
+    }
 
-res.json({
-  ok: true,
-  url: facturaUrl
-});
+    res.json({
+      ok: true,
+      url
+    });
+
   } catch (err) {
     next(err);
   }
 });
+
 
 /**
  * POST /pagos/:id/factura
