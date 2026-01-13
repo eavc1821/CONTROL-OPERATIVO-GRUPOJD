@@ -13,10 +13,18 @@ const s3 = new S3Client({
 const BUCKET = process.env.AWS_S3_BUCKET;
 const PUBLIC_URL = process.env.AWS_S3_PUBLIC_URL;
 
-async function saveFileS3({ tempPath, originalName, entidad, entidadId, correlativo, empresaId }) {
+async function saveFileS3({ tempPath, originalName, entidad, entidadId, correlativo, empresaId, empresaNombre }) {
   const safeName = originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
 
-  const key = `empresas/${empresaId}/${entidad}s/${correlativo || entidadId}/${Date.now()}_${safeName}`;
+  const slug = (empresaNombre || `empresa_${empresaId}`)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+
+  const key = `empresas/${empresaId}_${slug}/${entidad}s/${correlativo || entidadId}/${Date.now()}_${safeName}`;
+
 
   const fileStream = fs.createReadStream(tempPath);
 

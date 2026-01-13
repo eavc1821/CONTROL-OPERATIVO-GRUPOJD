@@ -364,7 +364,8 @@ async function updateFactura(empresaId, id, file) {
       entidad: "solicitud",
       entidadId: id,
       correlativo: solicitud.correlativo,
-      empresaId: empresaId
+      empresaId: empresaId,
+      empresaNombre: solicitud.empresa_nombre || solicitud.empresa || ""
     });
 
     // 4️⃣ Insertar nueva factura como VIGENTE
@@ -500,7 +501,8 @@ async function registrarPago(ctx, solicitudId, payload, file) {
       entidad: "pago",
       entidadId: pago.id,
       correlativo: solicitud.correlativo,
-      empresaId: ctx.empresaId
+      empresaId: ctx.empresaId,
+      empresaNombre: solicitud.empresa_nombre || solicitud.empresa || ""
     });
 
 
