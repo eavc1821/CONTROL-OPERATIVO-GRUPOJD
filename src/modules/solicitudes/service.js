@@ -496,10 +496,17 @@ async function registrarPago(ctx, solicitudId, payload, file) {
       empresa_id: ctx.empresaId
     });
 
-    await updateSolicitudFacturaData(client, solicitudId, {
-      numero_factura: payload.numero_factura,
-      fecha_factura: payload.fecha_factura
-    });
+    await client.query(
+      `
+      UPDATE pagos
+      SET
+        numero_factura = $1,
+        fecha_factura = $2,
+        updated_at = NOW()
+      WHERE id = $3
+      `,
+      [payload.numero_factura, payload.fecha_factura, pago.id]
+    );
 
     const saved = await storage.saveFileS3({
       tempPath: file.path,
