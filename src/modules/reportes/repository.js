@@ -41,14 +41,23 @@ async function getPorTipoPago(empresaId) {
 
 async function getMensual(empresaId, empresaIds = []) {
   const { rows } = await pool.query(`
-    SELECT * FROM vw_totales_mensuales
+    SELECT
+      v.periodo,
+      v.empresa_id,
+      e.nombre AS empresa,
+      v.total_solicitud
+    FROM vw_totales_mensuales v
+    JOIN empresas e ON e.id = v.empresa_id
     WHERE (
       $1 = 0
-      OR empresa_id = ANY($2)
+      OR v.empresa_id = ANY($2)
     )
+    ORDER BY v.periodo;
   `, [empresaId, empresaIds]);
+
   return rows;
 }
+
 
 async function getRanking(empresaId, empresaIds = []) {
   const { rows } = await pool.query(`
@@ -326,16 +335,22 @@ async function getDashboardDetalle(empresaId, empresaIds = []) {
       v.saldo_restante AS saldo,
       s.estado,
       s.fecha_solicitud,
+
+      e.id   AS empresa_id,
+      e.nombre AS empresa_nombre,
+
       v.numero_factura,
       v.fecha_factura
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
     JOIN proveedores p ON p.id = v.proveedor_id
+    JOIN empresas e ON e.id = v.empresa_id
     WHERE (
       $1 = 0
       OR v.empresa_id = ANY($2)
     )
     ORDER BY s.fecha_solicitud DESC
+    LIMIT 10;
   `, [empresaId, empresaIds]);
   return rows;
 }
