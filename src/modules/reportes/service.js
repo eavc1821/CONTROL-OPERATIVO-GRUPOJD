@@ -112,7 +112,8 @@ getDashboard: async (ctx) => {
   // 🔹 Datos comunes (HIJA y PADRE)
   const resumen = await repo.getResumen(empresaId);
   const kpis = await repo.getDashboardKPIs(empresaId, empresaIds);
-  const monthly = await repo.getMensual(empresaId, empresaIds);
+  const limite = modo === "AGREGADO" ? 12 : 6;
+const monthly = await repo.getMensual(empresaId, empresaIds, limite);
   const providers = await repo.getPorProveedor(empresaId, empresaIds);
   const paymentTypes = await repo.getTotalesPorTipoPago(empresaId);
   const ranking = await repo.getRanking(empresaId, empresaIds);

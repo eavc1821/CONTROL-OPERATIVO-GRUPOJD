@@ -39,7 +39,7 @@ async function getPorTipoPago(empresaId) {
   return rows;
 }
 
-async function getMensual(empresaId, empresaIds = []) {
+async function getMensual(empresaId, empresaIds = [], limit = 6) {
   const { rows } = await pool.query(`
     SELECT
       v.periodo,
@@ -52,11 +52,13 @@ async function getMensual(empresaId, empresaIds = []) {
       $1 = 0
       OR v.empresa_id = ANY($2)
     )
-    ORDER BY v.periodo;
-  `, [empresaId, empresaIds]);
+    ORDER BY v.periodo DESC
+    LIMIT $3;
+  `, [empresaId, empresaIds, limit]);
 
   return rows;
 }
+
 
 
 async function getRanking(empresaId, empresaIds = []) {
@@ -106,7 +108,6 @@ async function getCashflow(empresaId, empresaIds = []) {
 
   return rows;
 }
-
 
 
 
