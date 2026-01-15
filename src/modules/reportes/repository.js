@@ -121,14 +121,11 @@ async function getCashflow(empresaId, empresaIds = []) {
 
 
 async function getMesesDisponibles(empresaId) {
-  const { rows } = await pool.query(`
-    SELECT DISTINCT 
-      TO_CHAR(fecha_solicitud, 'YYYY-MM') AS periodo,
-      TO_CHAR(fecha_solicitud, 'TMMonth YYYY') AS nombre
-    FROM solicitudes
+   const { rows } = await pool.query(`
+    SELECT periodo, nombre
+    FROM vw_meses_disponibles_fmt
     WHERE ($1 = 0 OR empresa_id = $1)
- 
-    ORDER BY periodo DESC;
+    ORDER BY periodo DESC
   `, [empresaId]);
   return rows;
 }
@@ -149,7 +146,7 @@ async function getDashboardPorMes(empresaId, periodo) {
     JOIN solicitudes s ON s.id = v.solicitud_id
     JOIN proveedores p ON p.id = v.proveedor_id
     WHERE ($1 = 0 OR v.empresa_id = $1)
-      AND TO_CHAR(s.fecha_solicitud, 'YYYY-MM') = $2
+      AND date_trunc('month', s.fecha_solicitud) = to_date($2 || '-01', 'YYYY-MM-DD')
     ORDER BY s.fecha_solicitud DESC;
   `, [empresaId, periodo]);
 console.log("📦 [repository.getDashboardPorMes] rows:", rows);
