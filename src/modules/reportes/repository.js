@@ -46,21 +46,28 @@ async function getMensual(empresaId, empresaIds = [], limit = 6) {
       v.empresa_id,
       e.nombre AS empresa,
       v.total_solicitud,
-      v.total_pagado,
-      v.saldo_restante
+      COALESCE(SUM(p.monto), 0) AS total_pagado,
+      v.total_solicitud - COALESCE(SUM(p.monto), 0) AS saldo
     FROM vw_totales_mensuales v
     JOIN empresas e ON e.id = v.empresa_id
+    LEFT JOIN pagos p
+      ON p.empresa_id = v.empresa_id
+     AND DATE_TRUNC('month', p.fecha_pago) = v.periodo
     WHERE (
       $1 = 0
       OR v.empresa_id = ANY($2)
     )
+    GROUP BY
+      v.periodo,
+      v.empresa_id,
+      e.nombre,
+      v.total_solicitud
     ORDER BY v.periodo DESC
     LIMIT $3;
   `, [empresaId, empresaIds, limit]);
 
   return rows;
 }
-
 
 
 async function getRanking(empresaId, empresaIds = []) {
