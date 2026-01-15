@@ -137,19 +137,22 @@ async function getDashboardPorMes(empresaId, periodo) {
       s.correlativo,
       p.nombre AS proveedor,
       s.tipo_pago,
-      v.total_solicitud AS total,
-      v.total_pagado AS pagado,
+      v.total_solicitud,
+      v.total_pagado,
       v.saldo_restante AS saldo,
       s.estado,
-      TO_CHAR(s.fecha_solicitud, 'DD/MM/YYYY') AS fecha_solicitud
+      s.fecha_solicitud,
+      v.numero_factura,
+      v.fecha_factura
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
     JOIN proveedores p ON p.id = v.proveedor_id
     WHERE ($1 = 0 OR v.empresa_id = $1)
-      AND date_trunc('month', s.fecha_solicitud) = to_date($2 || '-01', 'YYYY-MM-DD')
+      AND date_trunc('month', s.fecha_solicitud)
+          = to_date($2 || '-01', 'YYYY-MM-DD')
     ORDER BY s.fecha_solicitud DESC;
   `, [empresaId, periodo]);
-console.log("📦 [repository.getDashboardPorMes] rows:", rows);
+
   return rows;
 }
 
