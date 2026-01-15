@@ -45,7 +45,9 @@ async function getMensual(empresaId, empresaIds = [], limit = 6) {
       v.periodo,
       v.empresa_id,
       e.nombre AS empresa,
-      v.total_solicitud
+      v.total_solicitud,
+      v.total_pagado,
+      v.saldo_restante
     FROM vw_totales_mensuales v
     JOIN empresas e ON e.id = v.empresa_id
     WHERE (
