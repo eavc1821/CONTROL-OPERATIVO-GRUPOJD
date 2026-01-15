@@ -45,6 +45,7 @@ router.post(
   ctrl.exportDetallePDF
 );
 
+router.get("/mensual/:periodo", auth, empresa, ctrl.getReporteMensual);
 
 
 module.exports = router;

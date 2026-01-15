@@ -265,7 +265,8 @@ async function exportDetallePDF(req, res, next) {
   }
 }
 
-router.get("/mensual/:periodo", async (req, res) => {
+
+async function getReporteMensual(req, res) {
   try {
     const { periodo } = req.params;
     const empresaId = req.empresaId;
@@ -277,7 +278,8 @@ router.get("/mensual/:periodo", async (req, res) => {
     console.error(err);
     res.status(500).json({ message: "Error obteniendo reporte mensual" });
   }
-});
+}
+
 
 
 module.exports = {
@@ -293,5 +295,5 @@ module.exports = {
   proveedoresReporte,
   proveedorPerfil,
   exportDetallePDF,
-  mensual
+  getReporteMensual
 };
