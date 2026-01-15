@@ -384,6 +384,61 @@ async function getResumenPorEmpresa(empresaIds = []) {
   return rows;
 }
 
+async function getReporteMensual(empresaId, periodo) {
+  // 1️⃣ KPIs del mes
+  const kpiQuery = `
+    SELECT
+      COALESCE(SUM(v.total_solicitud), 0) AS total_solicitado,
+      COALESCE(SUM(v.total_pagado), 0) AS total_pagado,
+      COALESCE(SUM(v.saldo_restante), 0) AS saldo_pendiente,
+      COUNT(*) AS total_solicitudes
+    FROM vw_total_pagado_por_solicitud v
+    JOIN solicitudes s ON s.id = v.solicitud_id
+    WHERE ($1 = 0 OR v.empresa_id = $1)
+      AND date_trunc('month', s.fecha_solicitud)
+          = to_date($2 || '-01', 'YYYY-MM-DD');
+  `;
+
+  const { rows: kpiRows } = await pool.query(kpiQuery, [empresaId, periodo]);
+  const kpis = kpiRows[0];
+
+  // 2️⃣ Detalle del mes
+  const detalleQuery = `
+    SELECT
+      v.solicitud_id,
+      s.correlativo,
+      p.nombre AS proveedor,
+      s.tipo_pago,
+      v.total_solicitud,
+      v.total_pagado,
+      v.saldo_restante AS saldo,
+      s.estado,
+      s.fecha_solicitud,
+      v.numero_factura,
+      v.fecha_factura
+    FROM vw_total_pagado_por_solicitud v
+    JOIN solicitudes s ON s.id = v.solicitud_id
+    JOIN proveedores p ON p.id = v.proveedor_id
+    WHERE ($1 = 0 OR v.empresa_id = $1)
+      AND date_trunc('month', s.fecha_solicitud)
+          = to_date($2 || '-01', 'YYYY-MM-DD')
+    ORDER BY s.fecha_solicitud DESC;
+  `;
+
+  const { rows: detalle } = await pool.query(detalleQuery, [empresaId, periodo]);
+
+  return {
+    kpis: {
+      total_solicitado: Number(kpis.total_solicitado || 0),
+      total_pagado: Number(kpis.total_pagado || 0),
+      saldo_pendiente: Number(kpis.saldo_pendiente || 0),
+      total_solicitudes: Number(kpis.total_solicitudes || 0),
+    },
+    detalle,
+  };
+}
+
+
 
 
 
@@ -403,5 +458,6 @@ module.exports = {
   getProveedorPerfil,
   getDashboardKPIs,
   getDashboardDetalle,
-  getResumenPorEmpresa
+  getResumenPorEmpresa,
+  getReporteMensual
 };
