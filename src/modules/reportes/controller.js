@@ -116,14 +116,24 @@ async function dashboard(req, res, next) {
       empresaIds: req.empresa_ids,
       modo: req.empresaModo || (req.empresa_id === 0 ? 'GENERAL' : 'EMPRESA')
     };
-    
+
     const data = await service.getDashboard(ctx);
 
     res.json({
       ok: true,
       data: {
-        ...data,
-        modo: ctx.modo
+        kpis: data.kpis || {
+          total_solicitado: 0,
+          total_pagado: 0,
+          saldo_pendiente: 0,
+          total_solicitudes: 0
+        },
+        monthly: data.monthly || [],
+        providers: data.providers || [],
+        paymentTypes: data.paymentTypes || [],
+        states: data.states || [],
+        cashflow: data.cashflow || [],
+        detalle: data.detalle || []
       },
       empresaContexto: {
         id: req.empresa_id,
@@ -134,6 +144,7 @@ async function dashboard(req, res, next) {
     next(err);
   }
 }
+
 
 
 async function meses(req, res, next) {
@@ -156,26 +167,35 @@ async function meses(req, res, next) {
   } catch (err) { next(err); }
 }
 
+
 async function dashboardPorMes(req, res, next) {
   try {
     const periodo = req.params.periodo;
+
     const ctx = {
       empresaId: req.empresa_id,
       empresaIds: req.empresa_ids,
-      modo: req.empresaModo || (req.empresa_id === 0 ? 'GENERAL' : 'EMPRESA')
+      modo: req.empresaModo || 'EMPRESA'
     };
 
-    const data = await service.getDashboardPorMes(ctx, periodo);
-    res.json({ 
+    const detalle = await service.getDashboardPorMes(ctx, periodo);
+
+    res.json({
       ok: true,
-      data,
+      data: {
+        detalle: detalle || []
+      },
       empresaContexto: {
         id: req.empresa_id,
         tipo: req.empresaTipo
       }
     });
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 }
+
+
 
 async function proveedoresReporte(req, res) {
   try {
@@ -266,21 +286,38 @@ async function exportDetallePDF(req, res, next) {
 }
 
 
-async function getReporteMensual(req, res) {
+async function reporteMensual(req, res, next) {
   try {
     const { periodo } = req.params;
-    const empresaId = req.empresaId;
 
-    const data = await repo.getReporteMensual(empresaId, periodo);
+    const ctx = {
+      empresaId: req.empresa_id,
+      empresaIds: req.empresa_ids,
+      modo: req.empresaModo || 'EMPRESA'
+    };
 
-    res.json({ data });
+    const data = await service.getReporteMensual(ctx, periodo);
+
+    res.json({
+      ok: true,
+      data: {
+        kpis: data.kpis || {
+          total_solicitado: 0,
+          total_pagado: 0,
+          saldo_pendiente: 0,
+          total_solicitudes: 0
+        },
+        detalle: data.detalle || []
+      },
+      empresaContexto: {
+        id: req.empresa_id,
+        tipo: req.empresaTipo
+      }
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error obteniendo reporte mensual" });
+    next(err);
   }
 }
-
-
 
 module.exports = {
   resumen,
@@ -295,5 +332,5 @@ module.exports = {
   proveedoresReporte,
   proveedorPerfil,
   exportDetallePDF,
-  getReporteMensual
+  reporteMensual
 };
