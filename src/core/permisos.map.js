@@ -10,6 +10,8 @@ module.exports = {
     "solicitudes.pagar",
     "empresas.listar",
     "proveedores.listar",
+    "proveedores.crear",
+    "proveedores.editar",
     "reportes.ver"
   ],
 
