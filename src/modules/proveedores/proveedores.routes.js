@@ -26,6 +26,7 @@ router.get('/:id', auth, ctrl.get);
 router.post(
   '/',
   auth,
+  empresa,
   requirePermiso("proveedores.crear"),
   validate(createProveedorSchema),
   ctrl.create
@@ -35,6 +36,7 @@ router.post(
 router.put(
   '/:id',
   auth,
+  empresa,
   requirePermiso("proveedores.editar"),
   validate(updateProveedorSchema),
   ctrl.update
@@ -44,6 +46,7 @@ router.put(
 router.delete(
   '/:id',
   auth,
+  empresa,
   requirePermiso("proveedores.eliminar"),
   ctrl.remove
 );
