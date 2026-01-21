@@ -1,5 +1,11 @@
 const pool = require('../../core/db');
 
+function parseFechaDDMMYY(value) {
+      if (!value) return null;
+      const [d, m, y] = value.split("/");
+      return new Date(`20${y}-${m}-${d}`);
+    }
+
 async function getAll() {
   const q = `
     SELECT
@@ -93,9 +99,9 @@ async function create(data) {
     // 1️⃣ crear proveedor GLOBAL (SIN CAI)
 const proveedorRes = await client.query(
   `
-  INSERT INTO proveedores (nombre, ruc, contacto, correo, direccion, categoria_id, cai)
-  VALUES ($1, $2, $3, $4, $5, $6, $7)
-  RETURNING id, nombre, ruc, contacto, correo, direccion, categoria_id, cai, created_at
+  INSERT INTO proveedores (nombre, ruc, contacto, correo, direccion, categoria_id, fecha_limite_emision, rango_factura_desde, rango_factura_hasta, cai)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+  RETURNING id, nombre, ruc, contacto, correo, direccion, categoria_id, fecha_limite_emision, rango_factura_desde, rango_factura_hasta, cai, created_at
   `,
   [
     data.nombre,
@@ -104,6 +110,9 @@ const proveedorRes = await client.query(
     data.correo,
     data.direccion,
     data.categoria_id,
+    parseFechaDDMMYY(data.fecha_limite_emision),
+    data.rango_factura_desde,
+    data.rango_factura_hasta,
     data.cai
   ]
 );
@@ -139,9 +148,12 @@ async function update(id, payload) {
       correo = COALESCE($4, correo),
       direccion = COALESCE($5, direccion),
       categoria_id = COALESCE($6, categoria_id),
-      cai = COALESCE($7, cai),
+      fecha_limite_emision = COALESCE($7, fecha_limite_emision),
+      rango_factura_desde = COALESCE($8, rango_factura_desde),
+      rango_factura_hasta = COALESCE($9, rango_factura_hasta),
+      cai = COALESCE($10, cai),
       updated_at = NOW()
-    WHERE id = $8
+    WHERE id = $11
     RETURNING *;
   `;
 
@@ -152,6 +164,9 @@ async function update(id, payload) {
     payload.correo,
     payload.direccion,
     payload.categoria_id,
+    parseFechaDDMMYY(payload.fecha_limite_emision),
+    payload.rango_factura_desde,
+    payload.rango_factura_hasta,
     payload.cai,
     id
   ]);
