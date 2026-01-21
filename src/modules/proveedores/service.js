@@ -38,7 +38,7 @@ async function create(req, data) {
   // 🔒 CONTRATO BLINDADO (igual que solicitudes)
   const payload = {
     ...data,
-    empresa_id: req.empresaId
+    empresa_id: req.empresa_id
   };
 
   const proveedor = await repo.create(payload);
@@ -46,7 +46,7 @@ async function create(req, data) {
   await bitacora.registrar(
     {
       usuario_id: req.usuario.id,
-      empresa_id: req.empresaId
+      empresa_id: req.empresa_id
     },
     {
       modulo: "proveedores",
@@ -82,7 +82,7 @@ async function update(req, id, data) {
   // 🔒 CONTRATO BLINDADO
   const payload = {
     ...data,
-    empresa_id: req.empresaId
+    empresa_id: req.empresa_id
   };
 
   const actualizado = await repo.update(id, payload);
@@ -90,7 +90,7 @@ async function update(req, id, data) {
   await bitacora.registrar(
     {
       usuario_id: req.usuario.id,
-      empresa_id: req.empresaId  
+      empresa_id: req.empresa_id  
     },
     {
       modulo: "proveedores",
