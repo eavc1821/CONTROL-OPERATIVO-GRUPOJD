@@ -1,10 +1,18 @@
 const pool = require('../../core/db');
 
 function parseFechaDDMMYY(value) {
-      if (!value) return null;
-      const [d, m, y] = value.split("/");
-      return new Date(`20${y}-${m}-${d}`);
-    }
+  if (!value || typeof value !== "string") return null;
+
+  const parts = value.split("/");
+  if (parts.length !== 3) return null;
+
+  const [d, m, y] = parts;
+
+  if (!d || !m || !y) return null;
+
+  return new Date(`20${y}-${m}-${d}`);
+}
+
 
 async function getAll() {
   const q = `
