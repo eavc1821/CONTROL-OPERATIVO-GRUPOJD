@@ -4,12 +4,11 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL no está definida en el entorno");
 }
 
+const isRemote = ["production", "staging"].includes(process.env.NODE_ENV);
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl:
-    process.env.NODE_ENV === "production"
-      ? { rejectUnauthorized: false }
-      : false,
+  ssl: isRemote ? { rejectUnauthorized: false } : false,
 });
 
 module.exports = pool;

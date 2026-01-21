@@ -10,16 +10,14 @@ const empresasRoutes = require('./modules/empresas/empresas.routes');
 const empresaMiddleware = require('./middlewares/empresa');
 const bitacoraRoutes = require("./modules/bitacora/routes");
 const aprobacionesRoutes = require("./modules/aprobaciones/aprobaciones.routes");
+const allowedOrigins = require("./config/cors");
+
 
 const cors = require("cors");
 const path = require("path");
 
 const app = express();
-const allowedOrigins = [
-  "https://control-operativo.gjd78.com",
-  "https://control-operativo-grupojd-production.up.railway.app",
-  "http://localhost:5173"
-];
+
 
 app.use(cors({
   origin: function (origin, callback) {
