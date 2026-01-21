@@ -24,6 +24,9 @@ async function getAll() {
       p.contacto,
       p.correo,
       p.direccion,
+      p.fecha_limite_emision,
+      p.rango_factura_desde,
+      p.rango_factura_hasta,
       p.created_at
     FROM proveedores p
     ORDER BY p.nombre;
@@ -43,6 +46,9 @@ async function getByEmpresa(empresaId) {
       p.direccion,
       p.categoria_id,
       p.cai,
+      p.fecha_limite_emision,
+      p.rango_factura_desde,
+      p.rango_factura_hasta,
       ep.activo
     FROM proveedores p
     JOIN empresas_proveedores ep
@@ -66,6 +72,9 @@ async function getById(id) {
       direccion,
       categoria_id,
       cai,
+      fecha_limite_emision,
+      rango_factura_desde,
+      rango_factura_hasta,
       created_at
     FROM proveedores
     WHERE id = $1;
