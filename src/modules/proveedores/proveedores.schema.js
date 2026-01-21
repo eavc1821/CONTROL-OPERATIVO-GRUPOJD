@@ -9,8 +9,8 @@ const createProveedorSchema = z.object({
   categoria_id: z.number().int().optional().nullable(),
   cai: z.string().min(5, "El CAI es obligatorio"),
   fecha_limite_emision: z.string().regex(/^\d{2}\/\d{2}\/\d{2}$/, "Formato inválido (dd/mm/yy)").optional().nullable(),
-  rango_factura_desde: z.number().int().positive().optional().nullable(),
-  rango_factura_hasta: z.number().int().positive().optional().nullable(),
+  rango_factura_desde: z.string().regex(/^\d{3}-\d{3}-\d{2}-\d{8}$/, "Formato inválido").optional().nullable(),
+  rango_factura_hasta: z.string().regex(/^\d{3}-\d{3}-\d{2}-\d{8}$/, "Formato inválido").optional().nullable(),
 });
 
 const updateProveedorSchema = z.object({
@@ -22,8 +22,8 @@ const updateProveedorSchema = z.object({
   categoria_id: z.number().int().optional().nullable(),
   cai: z.string().min(5).optional().nullable(),
   fecha_limite_emision: z.string().regex(/^\d{2}\/\d{2}\/\d{2}$/).optional().nullable(),
-  rango_factura_desde: z.number().int().positive().optional().nullable(),
-  rango_factura_hasta: z.number().int().positive().optional().nullable(),
+  rango_factura_desde: z.string().regex(/^\d{3}-\d{3}-\d{2}-\d{8}$/).optional().nullable(),
+  rango_factura_hasta: z.string().regex(/^\d{3}-\d{3}-\d{2}-\d{8}$/).optional().nullable(),
 });
 
 module.exports = {

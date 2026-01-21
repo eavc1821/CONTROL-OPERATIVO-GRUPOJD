@@ -1,6 +1,12 @@
 const repo = require("./repository");
 const bitacora = require("../bitacora/service");
 
+// 🔒 Función privada (NO exportar)
+function normalizarRango(valor) {
+  if (!valor) return null;
+  return valor.replace(/-/g, "");
+}
+
 // Listados (sin bitácora)
 async function listGlobal() {
   return repo.getAll();
@@ -16,6 +22,17 @@ async function get(id) {
 
 // Crear proveedor
 async function create(req, data) {
+
+  // ✅ Validación semántica de rango
+  if (data.rango_factura_desde && data.rango_factura_hasta) {
+    const desde = normalizarRango(data.rango_factura_desde);
+    const hasta = normalizarRango(data.rango_factura_hasta);
+
+    if (desde > hasta) {
+      throw new Error("El rango de facturación es inválido");
+    }
+  }
+
   const proveedor = await repo.create(data);
 
   await bitacora.registrar(
@@ -34,13 +51,22 @@ async function create(req, data) {
   return proveedor;
 }
 
-
 // Actualizar proveedor
 async function update(req, id, data) {
   const anterior = await repo.getById(id);
 
   if (!anterior) {
     throw new Error("Proveedor no encontrado");
+  }
+
+  // ✅ Validación semántica de rango
+  if (data.rango_factura_desde && data.rango_factura_hasta) {
+    const desde = normalizarRango(data.rango_factura_desde);
+    const hasta = normalizarRango(data.rango_factura_hasta);
+
+    if (desde > hasta) {
+      throw new Error("El rango de facturación es inválido");
+    }
   }
 
   const actualizado = await repo.update(id, data);
@@ -58,7 +84,6 @@ async function update(req, id, data) {
     }
   );
 
-
   return actualizado;
 }
 
@@ -73,18 +98,17 @@ async function remove(req, empresaId, id) {
   await repo.remove(empresaId, id);
 
   await bitacora.registrar(
-  {
-    usuario_id: req.usuario.id,
-    empresa_id: empresaId
-  },
-  {
-    modulo: "proveedores",
-    accion: "DELETE",
-    descripcion: `Eliminó el proveedor ${anterior.nombre} de la empresa ${empresaId}`,
-    data_anterior: anterior
-  }
-);
-
+    {
+      usuario_id: req.usuario.id,
+      empresa_id: empresaId
+    },
+    {
+      modulo: "proveedores",
+      accion: "DELETE",
+      descripcion: `Eliminó el proveedor ${anterior.nombre} de la empresa ${empresaId}`,
+      data_anterior: anterior
+    }
+  );
 
   return true;
 }
