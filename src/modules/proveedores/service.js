@@ -20,7 +20,9 @@ async function get(id) {
   return repo.getById(id);
 }
 
+// ==========================
 // Crear proveedor
+// ==========================
 async function create(req, data) {
 
   // ✅ Validación semántica de rango
@@ -33,12 +35,18 @@ async function create(req, data) {
     }
   }
 
-  const proveedor = await repo.create(data);
+  // 🔒 CONTRATO BLINDADO (igual que solicitudes)
+  const payload = {
+    ...data,
+    empresa_id: req.empresa_id
+  };
+
+  const proveedor = await repo.create(payload);
 
   await bitacora.registrar(
     {
       usuario_id: req.usuario.id,
-      empresa_id: data.empresa_id
+      empresa_id: req.empresa_id
     },
     {
       modulo: "proveedores",
@@ -51,7 +59,9 @@ async function create(req, data) {
   return proveedor;
 }
 
+// ==========================
 // Actualizar proveedor
+// ==========================
 async function update(req, id, data) {
   const anterior = await repo.getById(id);
 
@@ -69,11 +79,18 @@ async function update(req, id, data) {
     }
   }
 
-  const actualizado = await repo.update(id, data);
+  // 🔒 CONTRATO BLINDADO
+  const payload = {
+    ...data,
+    empresa_id: req.empresa_id
+  };
+
+  const actualizado = await repo.update(id, payload);
 
   await bitacora.registrar(
     {
-      usuario_id: req.usuario.id
+      usuario_id: req.usuario.id,
+      empresa_id: req.empresa_id
     },
     {
       modulo: "proveedores",
@@ -87,7 +104,9 @@ async function update(req, id, data) {
   return actualizado;
 }
 
-// Eliminar proveedor (por empresa)
+// ==========================
+// Eliminar proveedor
+// ==========================
 async function remove(req, empresaId, id) {
   const anterior = await repo.getById(id);
 
