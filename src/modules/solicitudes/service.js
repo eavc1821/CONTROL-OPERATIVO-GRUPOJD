@@ -448,6 +448,11 @@ async function listPagosBySolicitud(ctx, solicitudId) {
   return repo.findPagosBySolicitud(ctx.empresaId, solicitudId);
 }
 
+// 👉 Normalizar número de factura
+function normalizarFactura(valor) {
+  if (!valor) return null;
+  return valor.replace(/-/g, "").trim();
+}
 
 // 👉 Registrar pago (solo crédito y aprobada)
 async function registrarPago(ctx, solicitudId, payload, file) {
@@ -463,6 +468,47 @@ async function registrarPago(ctx, solicitudId, payload, file) {
     await client.query("BEGIN");
 
     const solicitud = await repo.findById(ctx.empresaId, solicitudId);
+
+    // ============================
+    // 🔒 VALIDACIÓN FISCAL DEL PROVEEDOR
+    // ============================
+
+    // 1️⃣ Obtener proveedor real de la solicitud
+    const proveedor = await proveedorRepo.getById(solicitud.proveedor_id);
+
+    if (!proveedor) {
+      throw new Error("Proveedor asociado a la solicitud no existe");
+    }
+
+    // 2️⃣ Validar número de factura vs rango
+    const factura = normalizarFactura(payload.numero_factura);
+    const rangoDesde = normalizarFactura(proveedor.rango_factura_desde);
+    const rangoHasta = normalizarFactura(proveedor.rango_factura_hasta);
+
+    if (rangoDesde && rangoHasta) {
+      if (!factura) {
+        throw new Error("El número de factura es obligatorio");
+      }
+
+      if (factura < rangoDesde || factura > rangoHasta) {
+        throw new Error(
+          "El número de factura está fuera del rango autorizado del proveedor"
+        );
+      }
+    }
+
+    // 3️⃣ Validar fecha de factura vs fecha límite de emisión
+    if (proveedor.fecha_limite_emision && payload.fecha_factura) {
+      const fechaFactura = new Date(payload.fecha_factura);
+      const fechaLimite = new Date(proveedor.fecha_limite_emision);
+
+      if (fechaFactura > fechaLimite) {
+        throw new Error(
+          "La fecha de la factura excede la fecha límite de emisión del proveedor"
+        );
+      }
+    }
+
     if (!solicitud) {
       throw new Error("Solicitud no encontrada");
     }
