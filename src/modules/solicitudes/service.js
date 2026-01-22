@@ -521,10 +521,11 @@ async function registrarPago(ctx, solicitudId, payload, file) {
 
       const facturaCompleta = prefijo + correlativoIngresado;
 
-      if (
-        facturaCompleta < rangoDesde ||
-        facturaCompleta > rangoHasta
-      ) {
+      const facturaNum = BigInt(facturaCompleta);
+      const rangoDesdeNum = BigInt(rangoDesde);
+      const rangoHastaNum = BigInt(rangoHasta);
+
+      if (facturaNum < rangoDesdeNum || facturaNum > rangoHastaNum) {
         throw new Error(
           "El número de factura está fuera del rango autorizado del proveedor"
         );
