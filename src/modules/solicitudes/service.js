@@ -491,56 +491,52 @@ async function registrarPago(ctx, solicitudId, payload, file) {
       throw new Error("Proveedor asociado a la solicitud no existe");
     }
 
-    const rangoDesde = normalizarFactura(proveedor.rango_factura_desde);
-    const rangoHasta = normalizarFactura(proveedor.rango_factura_hasta);
+    const rangoDesdeRaw = proveedor.rango_factura_desde;
+    const rangoHastaRaw = proveedor.rango_factura_hasta;
 
-    if (rangoDesde && rangoHasta) {
+    if (rangoDesdeRaw && rangoHastaRaw) {
       if (!payload.numero_factura) {
         throw new Error("El número de factura es obligatorio");
       }
 
-      // 🔹 Normalizar entrada del usuario (solo dígitos)
-      const inputNormalizado = payload.numero_factura.replace(/\D/g, "");
+      // 🔹 Extraer correlativos DESDE / HASTA
+      const matchDesde = rangoDesdeRaw.match(/(\d+)$/);
+      const matchHasta = rangoHastaRaw.match(/(\d+)$/);
 
-      let facturaCompleta;
-
-      // 🔹 Caso A: usuario ingresó el número fiscal completo
-      if (inputNormalizado.length === rangoHasta.length) {
-        facturaCompleta = inputNormalizado;
-      }
-      // 🔹 Caso B: usuario ingresó solo el correlativo
-      else {
-        const match = rangoHasta.match(/(\d+)$/);
-        if (!match) {
-          throw new Error("El rango de facturación del proveedor es inválido");
-        }
-
-        const correlativoLength = match[1].length;
-        const prefijo = rangoHasta.slice(
-          0,
-          rangoHasta.length - correlativoLength
-        );
-
-        const correlativo = inputNormalizado
-          .slice(-correlativoLength)
-          .padStart(correlativoLength, "0");
-
-        facturaCompleta = prefijo + correlativo;
+      if (!matchDesde || !matchHasta) {
+        throw new Error("El rango de facturación del proveedor es inválido");
       }
 
-      // 🔒 Comparación fiscal correcta (numérica)
-      const facturaNum = BigInt(facturaCompleta);
-      const rangoDesdeNum = BigInt(rangoDesde);
-      const rangoHastaNum = BigInt(rangoHasta);
+      const correlativoDesde = BigInt(matchDesde[1]);
+      const correlativoHasta = BigInt(matchHasta[1]);
 
-      if (facturaNum < rangoDesdeNum || facturaNum > rangoHastaNum) {
+      // 🔹 Correlativo ingresado por el usuario
+      const correlativoIngresado = BigInt(
+        payload.numero_factura.replace(/\D/g, "")
+      );
+
+      // 🔒 Validación REAL de negocio
+      if (
+        correlativoIngresado < correlativoDesde ||
+        correlativoIngresado > correlativoHasta
+      ) {
         throw new Error(
           "El número de factura está fuera del rango autorizado del proveedor"
         );
       }
 
-      // 🔐 Guardar siempre el número fiscal completo
-      payload.numero_factura = facturaCompleta;
+      // 🔹 Reconstruir número completo SOLO para guardar
+      const correlativoLength = matchHasta[1].length;
+      const prefijo = normalizarFactura(rangoHastaRaw).slice(
+        0,
+        normalizarFactura(rangoHastaRaw).length - correlativoLength
+      );
+
+      const correlativoPadded = correlativoIngresado
+        .toString()
+        .padStart(correlativoLength, "0");
+
+      payload.numero_factura = prefijo + correlativoPadded;
     }
 
     // --- Validación de fecha límite de emisión ---
@@ -661,7 +657,6 @@ async function registrarPago(ctx, solicitudId, payload, file) {
     client.release();
   }
 }
-
 
 
 async function getPagoById(ctx, id) {
