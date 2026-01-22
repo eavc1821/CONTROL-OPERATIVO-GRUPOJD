@@ -485,14 +485,12 @@ async function registrarPago(ctx, solicitudId, payload, file) {
     // ============================
     // 2️⃣ VALIDACIÓN FISCAL DEL PROVEEDOR
     // ============================
-
     const proveedor = await proveedorRepo.getById(solicitud.proveedor_id);
 
     if (!proveedor) {
       throw new Error("Proveedor asociado a la solicitud no existe");
     }
 
-    // --- Validación dinámica de número de factura ---
     const rangoDesde = normalizarFactura(proveedor.rango_factura_desde);
     const rangoHasta = normalizarFactura(proveedor.rango_factura_hasta);
 
@@ -501,26 +499,36 @@ async function registrarPago(ctx, solicitudId, payload, file) {
         throw new Error("El número de factura es obligatorio");
       }
 
-      // Extraer correlativo dinámicamente desde el rango
-      const match = rangoHasta.match(/(\d+)$/);
-      if (!match) {
-        throw new Error("El rango de facturación del proveedor es inválido");
+      // 🔹 Normalizar entrada del usuario (solo dígitos)
+      const inputNormalizado = payload.numero_factura.replace(/\D/g, "");
+
+      let facturaCompleta;
+
+      // 🔹 Caso A: usuario ingresó el número fiscal completo
+      if (inputNormalizado.length === rangoHasta.length) {
+        facturaCompleta = inputNormalizado;
+      }
+      // 🔹 Caso B: usuario ingresó solo el correlativo
+      else {
+        const match = rangoHasta.match(/(\d+)$/);
+        if (!match) {
+          throw new Error("El rango de facturación del proveedor es inválido");
+        }
+
+        const correlativoLength = match[1].length;
+        const prefijo = rangoHasta.slice(
+          0,
+          rangoHasta.length - correlativoLength
+        );
+
+        const correlativo = inputNormalizado
+          .slice(-correlativoLength)
+          .padStart(correlativoLength, "0");
+
+        facturaCompleta = prefijo + correlativo;
       }
 
-      const correlativoLength = match[1].length;
-      const prefijo = rangoHasta.slice(
-        0,
-        rangoHasta.length - correlativoLength
-      );
-
-      // Normalizar lo ingresado por el usuario
-      const correlativoIngresado = payload.numero_factura
-        .replace(/\D/g, "")
-        .slice(-correlativoLength)
-        .padStart(correlativoLength, "0");
-
-      const facturaCompleta = prefijo + correlativoIngresado;
-
+      // 🔒 Comparación fiscal correcta (numérica)
       const facturaNum = BigInt(facturaCompleta);
       const rangoDesdeNum = BigInt(rangoDesde);
       const rangoHastaNum = BigInt(rangoHasta);
@@ -531,7 +539,7 @@ async function registrarPago(ctx, solicitudId, payload, file) {
         );
       }
 
-      // Forzar siempre el número fiscal completo
+      // 🔐 Guardar siempre el número fiscal completo
       payload.numero_factura = facturaCompleta;
     }
 
@@ -550,7 +558,6 @@ async function registrarPago(ctx, solicitudId, payload, file) {
     // ============================
     // 3️⃣ Validaciones financieras
     // ============================
-
     const total = Number(solicitud.total || 0);
 
     const totalPagadoActual =
@@ -566,7 +573,6 @@ async function registrarPago(ctx, solicitudId, payload, file) {
     // ============================
     // 4️⃣ Registrar pago
     // ============================
-
     const pago = await repo.insertPagoTx(client, {
       solicitud_id: solicitudId,
       monto,
@@ -593,7 +599,6 @@ async function registrarPago(ctx, solicitudId, payload, file) {
     // ============================
     // 5️⃣ Subir factura PDF
     // ============================
-
     const saved = await storage.saveFileS3({
       tempPath: file.path,
       originalName: file.originalname,
@@ -612,7 +617,6 @@ async function registrarPago(ctx, solicitudId, payload, file) {
     // ============================
     // 6️⃣ Actualizar estado de solicitud
     // ============================
-
     let nuevoEstado = solicitud.estado;
 
     if (nuevoTotalPagado >= total && solicitud.estado !== "pagada") {
@@ -625,7 +629,6 @@ async function registrarPago(ctx, solicitudId, payload, file) {
     // ============================
     // 7️⃣ Bitácora
     // ============================
-
     await bitacora.registrar(
       {
         usuario_id: ctx.usuarioId,
@@ -658,6 +661,7 @@ async function registrarPago(ctx, solicitudId, payload, file) {
     client.release();
   }
 }
+
 
 
 async function getPagoById(ctx, id) {
