@@ -257,13 +257,13 @@ async function getTotalPagadoBySolicitudTx(client, solicitudId) {
 // 👉 Insertar pago dentro de una transacción
 async function insertPagoTx(
   client,
-  { solicitud_id, monto, fecha_pago, metodo_pago, referencia, notas, usuario_id, empresa_id }
+  { solicitud_id, monto, fecha_pago, metodo_pago, referencia, notas, usuario_id, empresa_id, cuenta_financiera_id }
 ) {
   const q = `
     INSERT INTO pagos
-      (solicitud_id, monto, fecha_pago, metodo_pago, referencia, notas, usuario_id, empresa_id, created_at, updated_at)
+      (solicitud_id, monto, fecha_pago, metodo_pago, referencia, notas, usuario_id, empresa_id, cuenta_financiera_id, created_at, updated_at)
     VALUES
-      ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW())
+      ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())
     RETURNING *;
   `;
 
@@ -275,7 +275,8 @@ async function insertPagoTx(
     referencia || null,
     notas || null,
     usuario_id,
-    empresa_id, // <-- ESTO ES LO QUE HACÍA FALTA
+    empresa_id,
+    cuenta_financiera_id,
   ]);
 
   return rows[0];
