@@ -263,42 +263,60 @@ async function getProveedorPerfil(proveedorId, empresaId) {
   // 3️⃣ DETALLE DE SOLICITUDES
   const detalleQuery = `
     SELECT
-      s.id AS solicitud_id,
-      s.correlativo,
-      p.nombre AS proveedor,
-      s.tipo_pago,
-      s.estado,
-      s.fecha_solicitud,
+        s.id AS solicitud_id,
+        s.correlativo,
+        p.nombre AS proveedor,
+        s.tipo_pago,
+        s.estado,
+        s.fecha_solicitud,
 
-      v.total_solicitud,
-      v.total_pagado,
-      v.saldo_restante AS saldo,
+        v.total_solicitud,
+        v.total_pagado,
+        v.saldo_restante AS saldo,
 
-      pa.id AS pago_id,
-      pa.monto,
-      pa.fecha_pago,
-      pa.numero_factura,
-      pa.fecha_factura,
-      pa.factura_url
+        pa.id AS pago_id,
+        pa.monto,
+        pa.fecha_pago,
+        pa.numero_factura,
+        pa.fecha_factura,
+        pa.factura_url,
 
-    FROM solicitudes s
+        cf.banco,
+        cf.numero_cuenta,
+        cf.nombre AS cuenta_nombre
 
-    JOIN proveedores p 
-      ON p.id = s.proveedor_id
+      FROM solicitudes s
 
-    JOIN vw_total_pagado_por_solicitud v 
-      ON v.solicitud_id = s.id
-    AND v.empresa_id   = s.empresa_id
+      JOIN proveedores p 
+        ON p.id = s.proveedor_id
 
-    LEFT JOIN pagos pa
-      ON pa.solicitud_id = s.id
-    AND pa.empresa_id   = s.empresa_id
+      JOIN vw_total_pagado_por_solicitud v 
+        ON v.solicitud_id = s.id
+      AND v.empresa_id   = s.empresa_id
 
-    WHERE s.proveedor_id = $1
-      AND ($2 = 0 OR s.empresa_id = $2)
+      LEFT JOIN LATERAL (
+        SELECT
+          pa.id,
+          pa.monto,
+          pa.fecha_pago,
+          pa.numero_factura,
+          pa.fecha_factura,
+          pa.factura_url,
+          pa.cuenta_financiera_id
+        FROM pagos pa
+        WHERE pa.solicitud_id = s.id
+          AND pa.empresa_id   = s.empresa_id
+        ORDER BY pa.fecha_pago DESC, pa.created_at DESC
+        LIMIT 1
+      ) pa ON true
 
-    ORDER BY s.fecha_solicitud DESC, pa.fecha_factura DESC, pa.created_at DESC;
+      LEFT JOIN cuentas_financieras cf
+        ON cf.id = pa.cuenta_financiera_id
 
+      WHERE s.proveedor_id = $1
+        AND ($2 = 0 OR s.empresa_id = $2)
+
+      ORDER BY s.fecha_solicitud DESC;
   `;
 
   const detalleResult = await pool.query(detalleQuery, [proveedorId, empresaId]);
