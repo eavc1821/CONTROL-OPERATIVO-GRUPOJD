@@ -343,25 +343,53 @@ async function getDashboardDetalle(empresaId, empresaIds = []) {
       s.correlativo,
       p.nombre AS proveedor,
       s.tipo_pago,
+
       v.total_solicitud,
       v.total_pagado,
       v.saldo_restante AS saldo,
+
       s.estado,
       s.fecha_solicitud,
 
-      e.id   AS empresa_id,
+      e.id AS empresa_id,
       e.nombre AS empresa_nombre,
 
       v.numero_factura,
-      v.fecha_factura
+      v.fecha_factura,
+
+      cf.banco,
+      cf.numero_cuenta,
+      cf.nombre AS cuenta_nombre
+
     FROM vw_total_pagado_por_solicitud v
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    JOIN proveedores p ON p.id = v.proveedor_id
-    JOIN empresas e ON e.id = v.empresa_id
+
+    JOIN solicitudes s
+      ON s.id = v.solicitud_id
+
+    JOIN proveedores p
+      ON p.id = v.proveedor_id
+
+    JOIN empresas e
+      ON e.id = v.empresa_id
+
+    LEFT JOIN LATERAL (
+        SELECT
+          pa.cuenta_financiera_id
+        FROM pagos pa
+        WHERE pa.solicitud_id = s.id
+          AND pa.empresa_id   = s.empresa_id
+        ORDER BY pa.fecha_pago DESC, pa.created_at DESC
+        LIMIT 1
+      ) ultimo_pago ON true
+
+      LEFT JOIN cuentas_financieras cf
+        ON cf.id = ultimo_pago.cuenta_financiera_id
+
     WHERE (
       $1 = 0
       OR v.empresa_id = ANY($2)
     )
+
     ORDER BY s.fecha_solicitud DESC
     LIMIT 10;
   `, [empresaId, empresaIds]);
