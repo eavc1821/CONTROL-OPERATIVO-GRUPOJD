@@ -287,20 +287,30 @@ async function insertPagoTx(
 async function findPagosBySolicitud(empresaId, solicitudId) {
   const q = `
     SELECT 
-      id,
-      solicitud_id,
-      monto,
-      fecha_pago,
-      metodo_pago,
-      referencia,
-      notas,
-      numero_factura,
-      fecha_factura,
-      factura_url,
-      created_at
-    FROM pagos
-    WHERE solicitud_id = $1 AND empresa_id = $2
-    ORDER BY fecha_pago DESC, created_at DESC
+      p.id,
+      p.solicitud_id,
+      p.monto,
+      p.fecha_pago,
+      p.metodo_pago,
+      p.referencia,
+      p.notas,
+      p.numero_factura,
+      p.fecha_factura,
+      p.factura_url,
+      p.created_at,
+
+      cf.banco,
+      cf.numero_cuenta,
+      cf.nombre AS cuenta_nombre
+
+    FROM pagos p
+    LEFT JOIN cuentas_financieras cf
+      ON cf.id = p.cuenta_financiera_id
+
+    WHERE p.solicitud_id = $1
+      AND p.empresa_id = $2
+
+    ORDER BY p.fecha_pago DESC, p.created_at DESC
   `;
   const { rows } = await pool.query(q, [solicitudId, empresaId]);
   return rows;
