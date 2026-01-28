@@ -268,6 +268,7 @@ async function exportDetallePDF(req, res, next) {
       empresaId: req.empresa_id,
       empresaIds: req.empresa_ids,
       modo: req.empresaModo || 'EMPRESA',
+      empresaNombre: req.empresaNombre,
       filtros: req.body
     };
 
