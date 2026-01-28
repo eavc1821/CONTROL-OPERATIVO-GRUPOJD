@@ -1,4 +1,3 @@
-const path = require("path");
 const PdfPrinter = require("pdfmake");
 
 const styles = require("./styles");
@@ -7,11 +6,11 @@ const buildKpis = require("./sections/kpis");
 const buildTable = require("./sections/table");
 const buildFooter = require("./sections/footer");
 
-// 🔹 Fuentes Roboto incluidas por pdfmake (server-side)
+// 🔹 Fuentes BASE de PDFKit (100 % seguras en backend)
 const fonts = {
-  Roboto: {
-    normal: path.join(__dirname, "../../../node_modules/pdfmake/fonts/Roboto-Regular.ttf"),
-    bold: path.join(__dirname, "../../../node_modules/pdfmake/fonts/Roboto-Medium.ttf")
+  Helvetica: {
+    normal: "Helvetica",
+    bold: "Helvetica-Bold"
   }
 };
 
