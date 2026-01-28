@@ -1,5 +1,5 @@
+const path = require("path");
 const PdfPrinter = require("pdfmake");
-const pdfFonts = require("pdfmake/build/vfs_fonts");
 
 const styles = require("./styles");
 const buildHeader = require("./sections/header");
@@ -7,14 +7,11 @@ const buildKpis = require("./sections/kpis");
 const buildTable = require("./sections/table");
 const buildFooter = require("./sections/footer");
 
-// 🔹 Cargar fuentes en memoria (OBLIGATORIO en Railway / Linux)
-PdfPrinter.prototype.vfs = pdfFonts.pdfMake.vfs;
-
-// 🔹 Definición de fuentes (NO depender del SO)
+// 🔹 Fuentes Roboto incluidas por pdfmake (server-side)
 const fonts = {
   Roboto: {
-    normal: "Roboto-Regular.ttf",
-    bold: "Roboto-Medium.ttf"
+    normal: path.join(__dirname, "../../../node_modules/pdfmake/fonts/Roboto-Regular.ttf"),
+    bold: path.join(__dirname, "../../../node_modules/pdfmake/fonts/Roboto-Medium.ttf")
   }
 };
 
@@ -23,13 +20,11 @@ module.exports = function buildReporteDetalle({
   periodo,
   detalle
 }) {
-  // Blindaje mínimo (evita crashes silenciosos)
   const detalleSafe = Array.isArray(detalle) ? detalle : [];
 
   const docDefinition = {
     styles,
 
-    // ⚠️ footer debe ser función inline para evitar errores silenciosos
     footer: (currentPage, pageCount) =>
       buildFooter(currentPage, pageCount),
 
