@@ -6,7 +6,7 @@ module.exports = {
   kpiLabel: { fontSize: 8, color: "#555" },
   kpiValue: { fontSize: 11, bold: true },
 
-  tableHeader: { bold: true, fontSize: 9 },
+  tableHeader: { fontSize: 9, bold: true },
   tableCell: { fontSize: 9 },
 
   footer: { fontSize: 8, color: "#777" }
