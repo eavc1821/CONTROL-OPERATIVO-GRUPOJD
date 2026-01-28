@@ -156,6 +156,7 @@ const monthly = await repo.getMensual(empresaId, empresaIds, limite);
 
 
 exportDetallePDF: async (ctx) => {
+  try {
   assertCtx(ctx);
 
   const { empresaId, empresaIds, filtros } = ctx;
@@ -174,6 +175,9 @@ exportDetallePDF: async (ctx) => {
     periodo: filtros.periodo,
     detalle: filtrado
   });
-}
-
+  }catch (err) {
+  console.error("❌ ERROR PDF SERVICE:", err);
+  throw err;
+  }
+} 
 };

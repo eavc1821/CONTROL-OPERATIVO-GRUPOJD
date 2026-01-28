@@ -282,7 +282,8 @@ async function exportDetallePDF(req, res, next) {
 
     res.send(pdfBuffer);
   } catch (err) {
-    next(err);
+    console.error("❌ ERROR PDF SERVICE:", err);
+    throw err;
   }
 }
 
