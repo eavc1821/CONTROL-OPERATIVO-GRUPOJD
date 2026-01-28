@@ -22,6 +22,10 @@ module.exports = function buildReporteDetalle({
   const detalleSafe = Array.isArray(detalle) ? detalle : [];
 
   const docDefinition = {
+    defaultStyle: {
+      font: "Helvetica"
+    },
+
     styles,
 
     footer: (currentPage, pageCount) =>
