@@ -115,37 +115,42 @@ async function create(data) {
 
     // 1️⃣ Buscar proveedor legal por RUC
     const proveedorExistente = await client.query(
-      "SELECT id FROM proveedores WHERE ruc = $1",
-      [data.ruc]
-    );
-
-    let proveedorId;
-
-    if (proveedorExistente.rows.length > 0) {
-      proveedorId = proveedorExistente.rows[0].id;
-    } else {
-      const nuevoProveedor = await client.query(
-        `
-        INSERT INTO proveedores (nombre, ruc, cai, categoria_id,
-                                 fecha_limite_emision,
-                                 rango_factura_desde,
-                                 rango_factura_hasta)
-        VALUES ($1,$2,$3,$4,$5,$6,$7)
-        RETURNING id
-        `,
-        [
-          data.nombre,
-          data.ruc,
-          data.cai,
-          data.categoria_id,
-          parseFechaDDMMYY(data.fecha_limite_emision),
-          data.rango_factura_desde,
-          data.rango_factura_hasta
-        ]
+        "SELECT id FROM proveedores WHERE ruc = $1",
+        [data.ruc]
       );
 
-      proveedorId = nuevoProveedor.rows[0].id;
-    }
+      let proveedorId;
+
+      if (proveedorExistente.rows.length > 0) {
+        // 🔒 CASO RTN EXISTENTE → NO INSERTAR
+        proveedorId = proveedorExistente.rows[0].id;
+      } else {
+        // 🆕 RTN NUEVO → INSERTAR
+        const nuevo = await client.query(
+          `
+          INSERT INTO proveedores (
+            nombre, ruc, cai, categoria_id,
+            fecha_limite_emision,
+            rango_factura_desde,
+            rango_factura_hasta
+          )
+          VALUES ($1,$2,$3,$4,$5,$6,$7)
+          RETURNING id
+          `,
+          [
+            data.nombre,
+            data.ruc,
+            data.cai,
+            data.categoria_id,
+            parseFechaDDMMYY(data.fecha_limite_emision),
+            data.rango_factura_desde,
+            data.rango_factura_hasta
+          ]
+        );
+
+        proveedorId = nuevo.rows[0].id;
+      }
+
 
     // 2️⃣ Crear sucursal
     const sucursal = await client.query(
