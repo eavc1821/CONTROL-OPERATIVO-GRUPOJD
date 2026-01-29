@@ -113,46 +113,87 @@ async function create(data) {
   try {
     await client.query("BEGIN");
 
-    // 1️⃣ crear proveedor GLOBAL (SIN CAI)
-const proveedorRes = await client.query(
-  `
-  INSERT INTO proveedores (nombre, ruc, contacto, correo, direccion, categoria_id, fecha_limite_emision, rango_factura_desde, rango_factura_hasta, cai)
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-  RETURNING id, nombre, ruc, contacto, correo, direccion, categoria_id, fecha_limite_emision, rango_factura_desde, rango_factura_hasta, cai, created_at
-  `,
-  [
-    data.nombre,
-    data.ruc,
-    data.contacto,
-    data.correo,
-    data.direccion,
-    data.categoria_id,
-    parseFechaDDMMYY(data.fecha_limite_emision),
-    data.rango_factura_desde,
-    data.rango_factura_hasta,
-    data.cai
-  ]
-);
+    // 1️⃣ Buscar proveedor legal por RUC
+    const proveedorExistente = await client.query(
+      "SELECT id FROM proveedores WHERE ruc = $1",
+      [data.ruc]
+    );
 
-const proveedor = proveedorRes.rows[0];
+    let proveedorId;
 
-await client.query(
-  `
-  INSERT INTO empresas_proveedores (proveedor_id, empresa_id, activo)
-  VALUES ($1, $2, true)
-  `,
-  [proveedor.id, data.empresa_id]
-);
-await client.query("COMMIT");
-return proveedor;
+    if (proveedorExistente.rows.length > 0) {
+      proveedorId = proveedorExistente.rows[0].id;
+    } else {
+      const nuevoProveedor = await client.query(
+        `
+        INSERT INTO proveedores (nombre, ruc, cai, categoria_id,
+                                 fecha_limite_emision,
+                                 rango_factura_desde,
+                                 rango_factura_hasta)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        RETURNING id
+        `,
+        [
+          data.nombre,
+          data.ruc,
+          data.cai,
+          data.categoria_id,
+          parseFechaDDMMYY(data.fecha_limite_emision),
+          data.rango_factura_desde,
+          data.rango_factura_hasta
+        ]
+      );
+
+      proveedorId = nuevoProveedor.rows[0].id;
+    }
+
+    // 2️⃣ Crear sucursal
+    const sucursal = await client.query(
+      `
+      INSERT INTO proveedor_sucursales
+        (proveedor_id, nombre, contacto, correo, direccion)
+      VALUES ($1,$2,$3,$4,$5)
+      RETURNING *
+      `,
+      [
+        proveedorId,
+        data.nombre,      // por ahora usamos el mismo nombre
+        data.contacto,
+        data.correo,
+        data.direccion
+      ]
+    );
+
+    // 3️⃣ Relación empresa-proveedor (igual que hoy)
+    await client.query(
+      `
+      INSERT INTO empresas_proveedores (proveedor_id, empresa_id, activo)
+      VALUES ($1, $2, true)
+      ON CONFLICT DO NOTHING
+      `,
+      [proveedorId, data.empresa_id]
+    );
+
+    await client.query("COMMIT");
+
+    return {
+      proveedor_id: proveedorId,
+      sucursal: sucursal.rows[0]
+    };
 
   } catch (err) {
     await client.query("ROLLBACK");
+
+    if (err.code === "23505") {
+      throw new Error("La sucursal ya existe para este proveedor");
+    }
+
     throw err;
   } finally {
     client.release();
   }
 }
+
 
 
 async function update(id, payload) {
