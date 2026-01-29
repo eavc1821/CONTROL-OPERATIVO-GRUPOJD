@@ -1,13 +1,10 @@
-module.exports = function buildHeader({ empresaNombre, periodo }) {
-  return {
-    stack: [
-      { text: empresaNombre, style: "empresa" },
-      { text: "Reporte Administrativo", style: "titulo" },
-      {
-        text: `Periodo: ${periodo || "General"} · Generado: ${new Date().toLocaleString("es-HN")}`,
-        style: "subtitulo"
-      }
-    ],
-    margin: [0, 0, 0, 12]
-  };
-};
+module.exports = (empresa, metadata) => `
+  <div class="header">
+    <h1>${empresa.nombre}</h1>
+    <p>Reporte de Solicitudes</p>
+    <small>
+      Periodo: ${metadata.periodo} ·
+      Generado: ${new Date(metadata.generadoEn).toLocaleString("es-HN")}
+    </small>
+  </div>
+`;

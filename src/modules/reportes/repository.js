@@ -488,6 +488,68 @@ async function getReporteMensual(empresaId, periodo) {
 }
 
 
+async function getReporteSolicitudesCompleto({
+  empresaId,
+  empresaIds,
+  filtros
+}) {
+  const params = [empresaId, empresaIds];
+  const where = [
+    `($1 = 0 OR v.empresa_id = ANY($2))`
+  ];
+
+  if (filtros?.estado && filtros.estado !== "Todos") {
+    params.push(filtros.estado);
+    where.push(`s.estado = $${params.length}`);
+  }
+
+  if (filtros?.periodo) {
+    params.push(filtros.periodo);
+    where.push(`
+      date_trunc('month', s.fecha_solicitud)
+      = to_date($${params.length} || '-01', 'YYYY-MM-DD')
+    `);
+  }
+
+  const sql = `
+    SELECT
+      s.correlativo,
+      p.nombre AS proveedor,
+      s.tipo_pago,
+      s.estado,
+      s.fecha_solicitud,
+
+      v.total_solicitud,
+      v.total_pagado,
+      v.saldo_restante AS saldo,
+
+      v.numero_factura,
+      v.fecha_factura,
+
+      cf.banco,
+      cf.numero_cuenta
+
+    FROM vw_total_pagado_por_solicitud v
+    JOIN solicitudes s ON s.id = v.solicitud_id
+    JOIN proveedores p ON p.id = v.proveedor_id
+    LEFT JOIN LATERAL (
+      SELECT cuenta_financiera_id
+      FROM pagos
+      WHERE solicitud_id = s.id
+        AND empresa_id = s.empresa_id
+      ORDER BY fecha_pago DESC, created_at DESC
+      LIMIT 1
+    ) pa ON true
+    LEFT JOIN cuentas_financieras cf
+      ON cf.id = pa.cuenta_financiera_id
+
+    WHERE ${where.join(" AND ")}
+    ORDER BY s.fecha_solicitud DESC;
+  `;
+
+  const { rows } = await pool.query(sql, params);
+  return rows;
+}
 
 
 
@@ -508,5 +570,6 @@ module.exports = {
   getDashboardKPIs,
   getDashboardDetalle,
   getResumenPorEmpresa,
-  getReporteMensual
+  getReporteMensual,
+  getReporteSolicitudesCompleto
 };

@@ -8,6 +8,8 @@ const fonts = {
     bold: "Helvetica-Bold"
   }
 };
+
+
 module.exports = {
 
   // =========================
@@ -179,5 +181,29 @@ exportDetallePDF: async (ctx) => {
   console.error("❌ ERROR PDF SERVICE:", err);
   throw err;
   }
-} 
+}, 
+
+exportReporteSolicitudesPDF: async (ctx) => {
+  try {
+    assertCtx(ctx);
+
+    const generarReporteSolicitudesPDF =
+      require("./pdf");
+
+    return await generarReporteSolicitudesPDF({
+      empresaId: ctx.empresaId,
+      periodo: ctx.filtros?.periodo,
+      filtros: ctx.filtros
+    });
+
+  } catch (err) {
+    console.error("❌ ERROR NUEVO PDF:", err);
+    throw err;
+  }
+}
+
+
 };
+
+
+

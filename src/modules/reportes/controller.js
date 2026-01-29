@@ -268,11 +268,11 @@ async function exportDetallePDF(req, res, next) {
       empresaId: req.empresa_id,
       empresaIds: req.empresa_ids,
       modo: req.empresaModo || 'EMPRESA',
-      empresaNombre: req.empresaNombre,
       filtros: req.body
     };
 
-    const pdfBuffer = await service.exportDetallePDF(ctx);
+    const pdfBuffer =
+      await service.exportReporteSolicitudesPDF(ctx);
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -282,8 +282,7 @@ async function exportDetallePDF(req, res, next) {
 
     res.send(pdfBuffer);
   } catch (err) {
-    console.error("❌ ERROR PDF SERVICE:", err);
-    throw err;
+    next(err);
   }
 }
 
