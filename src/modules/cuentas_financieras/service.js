@@ -5,17 +5,13 @@ const pool = require("../../core/db");
  * 🔑 Resuelve la empresa financiera efectiva.
  *
  * Regla:
- * - Si la empresa tiene padre → usa las cuentas del padre
- * - Si no tiene padre → usa sus propias cuentas
+ * - Si la empresa tiene parent_id → usa las cuentas del padre
+ * - Si NO tiene parent_id → usa sus propias cuentas
  */
 async function resolveEmpresaFinancieraId(empresaId) {
   const q = `
     SELECT
-      CASE
-        WHEN empresa_padre_id IS NOT NULL
-        THEN empresa_padre_id
-        ELSE id
-      END AS empresa_financiera_id
+      COALESCE(parent_id, id) AS empresa_financiera_id
     FROM empresas
     WHERE id = $1
   `;
@@ -40,7 +36,10 @@ async function list(ctx, metodo_pago) {
   const empresaFinancieraId =
     await resolveEmpresaFinancieraId(ctx.empresaId);
 
-  return repo.listByMetodoPago(empresaFinancieraId, metodo_pago);
+  return repo.listByMetodoPago(
+    empresaFinancieraId,
+    metodo_pago
+  );
 }
 
 /**
