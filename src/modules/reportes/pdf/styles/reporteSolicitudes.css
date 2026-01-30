@@ -1,0 +1,138 @@
+    /* ==========================
+       CONFIGURACIÓN PDF
+    ========================== */
+    @page {
+      size: A4 landscape;
+      margin: 18mm;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11px;
+      color: #1f2937;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      padding: 0;
+    }
+
+    /* ==========================
+       HEADER
+    ========================== */
+    .header {
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .empresa-nombre {
+      font-size: 16px;
+      font-weight: bold;
+    }
+
+    .reporte-titulo {
+      font-size: 13px;
+      font-weight: bold;
+      margin-top: 2px;
+    }
+
+    .header-meta {
+      font-size: 10px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    /* ==========================
+       FILTROS
+    ========================== */
+    .filters {
+      margin-bottom: 10px;
+      font-size: 10px;
+      color: #374151;
+    }
+
+    .filters span {
+      margin-right: 12px;
+    }
+
+    /* ==========================
+       RESUMEN KPI
+    ========================== */
+    .kpis {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .kpi {
+      flex: 1;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 6px;
+      text-align: center;
+    }
+
+    .kpi-label {
+      font-size: 10px;
+      color: #6b7280;
+    }
+
+    .kpi-value {
+      font-size: 13px;
+      font-weight: bold;
+      margin-top: 2px;
+    }
+
+    /* ==========================
+       TABLA
+    ========================== */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+    }
+
+    thead {
+      display: table-header-group;
+      background-color: #f3f4f6;
+    }
+
+    th, td {
+      border: 1px solid #e5e7eb;
+      padding: 4px 6px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      font-weight: bold;
+      font-size: 10px;
+    }
+
+    td.numeric {
+      text-align: right;
+    }
+
+    tr:nth-child(even) td {
+      background-color: #fafafa;
+    }
+
+    /* ==========================
+       FOOTER
+    ========================== */
+    .footer {
+      position: fixed;
+      bottom: 10mm;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 9px;
+      color: #6b7280;
+    }

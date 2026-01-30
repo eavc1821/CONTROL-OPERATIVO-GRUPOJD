@@ -84,6 +84,7 @@ module.exports = async (req, res, next) => {
 
   // 4. Empresa específica
   const empresa = findEmpresaRecursiva(req.usuario.empresas, empresaId);
+  
 
   if (!empresa) {
     return res.status(403).json({
@@ -93,6 +94,7 @@ module.exports = async (req, res, next) => {
   }
 
   req.empresa_id = empresaId;
+  req.empresaNombre = empresa.nombre;
 
 if (empresa.children && empresa.children.length > 0) {
   // EMPRESA PADRE

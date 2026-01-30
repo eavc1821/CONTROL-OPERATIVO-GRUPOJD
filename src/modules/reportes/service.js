@@ -1,12 +1,15 @@
 const repo = require('./repository');
 const assertCtx = require('../../utils/assertReporteCtx');
 const PdfPrinter = require("pdfmake");
+const buildReporteDetalle = require("./pdf/buildReporteDetalle");
 const fonts = {
   Helvetica: {
     normal: "Helvetica",
     bold: "Helvetica-Bold"
   }
 };
+
+
 module.exports = {
 
   // =========================
@@ -154,70 +157,53 @@ const monthly = await repo.getMensual(empresaId, empresaIds, limite);
 },
 
 
-exportDetallePDF:async (ctx) => {
+exportDetallePDF: async (ctx) => {
+  try {
   assertCtx(ctx);
 
   const { empresaId, empresaIds, filtros } = ctx;
 
   const detalle = await repo.getDashboardDetalle(empresaId, empresaIds);
 
-  // Aplicar filtros aquí (estado, fechas, etc.)
   const filtrado = detalle.filter(d => {
     if (filtros.estado && filtros.estado !== "Todos") {
-      if (d.estado !== filtros.estado) return false;
+      return d.estado === filtros.estado;
     }
     return true;
   });
 
-  const body = [
-    [
-      "Correlativo",
-      "Proveedor",
-      "Factura",
-      "Fecha factura",
-      "Tipo pago",
-      "Total",
-      "Pagado",
-      "Saldo",
-      "Estado"
-    ],
-    ...filtrado.map(d => ([
-      d.correlativo,
-      d.proveedor,
-      d.numero_factura || "-",
-      d.fecha_factura || "-",
-      d.tipo_pago,
-      d.total_solicitud,
-      d.total_pagado,
-      d.saldo,
-      d.estado
-    ]))
-  ];
+  return await buildReporteDetalle({
+    empresaNombre: ctx.empresaNombre || "Empresa",
+    periodo: filtros.periodo,
+    detalle: filtrado
+  });
+  }catch (err) {
+  console.error("❌ ERROR PDF SERVICE:", err);
+  throw err;
+  }
+}, 
 
-  const docDefinition = {
-    content: [
-      { text: filtros.empresaNombre, style: "header" },
-      {
-        text: `Reporte de solicitudes - ${filtros.periodo}`,
-        margin: [0, 0, 0, 10]
-      },
-      {
-        table: { headerRows: 1, widths: ["*", "*", "*", "*", "*", "*", "*", "*", "*"], body }
-      }
-    ],
-    styles: {
-      header: { fontSize: 16, bold: true }
-    }
-  };
+exportReporteSolicitudesPDF: async (ctx) => {
+  try {
+    assertCtx(ctx);
 
-  const printer = new PdfPrinter(fonts);
-  const pdfDoc = printer.createPdfKitDocument(docDefinition);
+    const generarReporteSolicitudesPDF =
+      require("./pdf");
 
-  const chunks = [];
-  pdfDoc.on("data", c => chunks.push(c));
-  pdfDoc.end();
+    return await generarReporteSolicitudesPDF({
+      empresaId: ctx.empresaId,
+      periodo: ctx.filtros?.periodo,
+      filtros: ctx.filtros
+    });
 
-  return Buffer.concat(chunks);
+  } catch (err) {
+    console.error("❌ ERROR NUEVO PDF:", err);
+    throw err;
+  }
 }
 
+
 };
+
+
+

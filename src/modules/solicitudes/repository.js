@@ -257,13 +257,13 @@ async function getTotalPagadoBySolicitudTx(client, solicitudId) {
 // 👉 Insertar pago dentro de una transacción
 async function insertPagoTx(
   client,
-  { solicitud_id, monto, fecha_pago, metodo_pago, referencia, notas, usuario_id, empresa_id }
+  { solicitud_id, monto, fecha_pago, metodo_pago, referencia, notas, usuario_id, empresa_id, cuenta_financiera_id }
 ) {
   const q = `
     INSERT INTO pagos
-      (solicitud_id, monto, fecha_pago, metodo_pago, referencia, notas, usuario_id, empresa_id, created_at, updated_at)
+      (solicitud_id, monto, fecha_pago, metodo_pago, referencia, notas, usuario_id, empresa_id, cuenta_financiera_id, created_at, updated_at)
     VALUES
-      ($1,$2,$3,$4,$5,$6,$7,$8,NOW(),NOW())
+      ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())
     RETURNING *;
   `;
 
@@ -275,7 +275,8 @@ async function insertPagoTx(
     referencia || null,
     notas || null,
     usuario_id,
-    empresa_id, // <-- ESTO ES LO QUE HACÍA FALTA
+    empresa_id,
+    cuenta_financiera_id,
   ]);
 
   return rows[0];
@@ -286,20 +287,30 @@ async function insertPagoTx(
 async function findPagosBySolicitud(empresaId, solicitudId) {
   const q = `
     SELECT 
-      id,
-      solicitud_id,
-      monto,
-      fecha_pago,
-      metodo_pago,
-      referencia,
-      notas,
-      numero_factura,
-      fecha_factura,
-      factura_url,
-      created_at
-    FROM pagos
-    WHERE solicitud_id = $1 AND empresa_id = $2
-    ORDER BY fecha_pago DESC, created_at DESC
+      p.id,
+      p.solicitud_id,
+      p.monto,
+      p.fecha_pago,
+      p.metodo_pago,
+      p.referencia,
+      p.notas,
+      p.numero_factura,
+      p.fecha_factura,
+      p.factura_url,
+      p.created_at,
+
+      cf.banco,
+      cf.numero_cuenta,
+      cf.nombre AS cuenta_nombre
+
+    FROM pagos p
+    LEFT JOIN cuentas_financieras cf
+      ON cf.id = p.cuenta_financiera_id
+
+    WHERE p.solicitud_id = $1
+      AND p.empresa_id = $2
+
+    ORDER BY p.fecha_pago DESC, p.created_at DESC
   `;
   const { rows } = await pool.query(q, [solicitudId, empresaId]);
   return rows;

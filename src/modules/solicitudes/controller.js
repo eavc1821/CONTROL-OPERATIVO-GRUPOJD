@@ -268,7 +268,8 @@ async function registrarPago(req, res, next) {
       referencia,
       notas,
       numero_factura,
-      fecha_factura
+      fecha_factura,
+      cuenta_financiera_id
     } = req.body;
 
     const file = req.file;
@@ -309,7 +310,8 @@ async function registrarPago(req, res, next) {
       referencia: referencia || null,
       notas: notas || null,
       numero_factura,
-      fecha_factura
+      fecha_factura,
+      cuenta_financiera_id: Number(cuenta_financiera_id)
     };
 
     const result = await service.registrarPago(

@@ -271,7 +271,8 @@ async function exportDetallePDF(req, res, next) {
       filtros: req.body
     };
 
-    const pdfBuffer = await service.exportDetallePDF(ctx);
+    const pdfBuffer =
+      await service.exportReporteSolicitudesPDF(ctx);
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(

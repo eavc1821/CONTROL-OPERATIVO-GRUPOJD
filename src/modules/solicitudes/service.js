@@ -462,6 +462,8 @@ async function registrarPago(ctx, solicitudId, payload, file) {
     throw new Error("usuarioId es obligatorio para registrar pagos");
   }
 
+  const { cuenta_financiera_id } = payload;
+
   const client = await pool.connect();
 
   try {
@@ -567,6 +569,13 @@ async function registrarPago(ctx, solicitudId, payload, file) {
     }
 
     // ============================
+    // 3.1️⃣ Validar cuenta financiera
+    // ============================
+    if (!cuenta_financiera_id) {
+      throw new Error("Debe seleccionar la cuenta de origen del pago");
+    }
+
+    // ============================
     // 4️⃣ Registrar pago
     // ============================
     const pago = await repo.insertPagoTx(client, {
@@ -577,7 +586,8 @@ async function registrarPago(ctx, solicitudId, payload, file) {
       referencia: payload.numero_factura,
       notas: payload.notas,
       usuario_id: ctx.usuarioId,
-      empresa_id: ctx.empresaId
+      empresa_id: ctx.empresaId,
+      cuenta_financiera_id,
     });
 
     await client.query(
