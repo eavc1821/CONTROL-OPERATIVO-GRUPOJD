@@ -4,7 +4,7 @@ const emptyToUndefined = (v) => (v === "" ? undefined : v);
 
 const createProveedorSchema = z.object({
   nombre: z.string().min(3, "El nombre es obligatorio"),
-  ruc: z.string().optional().nullable(),
+  ruc: z.preprocess(emptyToUndefined,z.string().optional()),
   contacto: z.string().optional().nullable(),
   correo: z.preprocess(emptyToUndefined,z.string().email("Correo inválido").optional()),
   direccion: z.string().optional().nullable(),
@@ -23,7 +23,7 @@ const createProveedorSchema = z.object({
 
 const updateProveedorSchema = z.object({
   nombre: z.string().min(3).optional(),
-  ruc: z.string().optional().nullable(),
+  ruc: z.preprocess(emptyToUndefined,z.string().optional()),
   contacto: z.string().optional().nullable(),
   correo: z.preprocess(emptyToUndefined,z.string().email("Correo inválido").optional()),
   direccion: z.string().optional().nullable(),
