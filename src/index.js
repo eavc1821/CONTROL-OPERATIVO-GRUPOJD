@@ -1,3 +1,7 @@
+console.log("require:", typeof require);
+console.log("module:", typeof module);
+
+
 // SOLO cargar dotenv en local
 if (!process.env.RAILWAY_ENVIRONMENT) {
   require("./bootstrap/env");
