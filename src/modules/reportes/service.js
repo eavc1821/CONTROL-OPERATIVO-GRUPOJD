@@ -1,7 +1,6 @@
 const repo = require('./repository');
 const assertCtx = require('../../utils/assertReporteCtx');
 const PdfPrinter = require("pdfmake");
-const buildReporteDetalle = require("./pdf/buildReporteDetalle");
 const fonts = {
   Helvetica: {
     normal: "Helvetica",
@@ -155,33 +154,6 @@ const monthly = await repo.getMensual(empresaId, empresaIds, limite);
     resumenEmpresas
   };
 },
-
-
-exportDetallePDF: async (ctx) => {
-  try {
-  assertCtx(ctx);
-
-  const { empresaId, empresaIds, filtros } = ctx;
-
-  const detalle = await repo.getDashboardDetalle(empresaId, empresaIds);
-
-  const filtrado = detalle.filter(d => {
-    if (filtros.estado && filtros.estado !== "Todos") {
-      return d.estado === filtros.estado;
-    }
-    return true;
-  });
-
-  return await buildReporteDetalle({
-    empresaNombre: ctx.empresaNombre || "Empresa",
-    periodo: filtros.periodo,
-    detalle: filtrado
-  });
-  }catch (err) {
-  console.error("❌ ERROR PDF SERVICE:", err);
-  throw err;
-  }
-}, 
 
 exportReporteSolicitudesPDF: async (ctx) => {
   try {
