@@ -1,25 +1,17 @@
-export async function existsCai(client, cai) {
+async function existsCai(client, cai) {
   const { rowCount } = await client.query(
-    `SELECT 1 FROM proveedor_sucursales WHERE cai = $1`,
+    "SELECT 1 FROM proveedor_sucursales WHERE cai = $1",
     [cai]
   );
   return rowCount > 0;
 }
 
-export async function createSucursal(client, data) {
+async function createSucursal(client, data) {
   const { rows } = await client.query(
     `
-    INSERT INTO proveedor_sucursales (
-      proveedor_id,
-      nombre,
-      cai,
-      rango_factura_desde,
-      rango_factura_hasta,
-      fecha_limite_emision,
-      contacto,
-      correo,
-      direccion
-    )
+    INSERT INTO proveedor_sucursales
+    (proveedor_id, nombre, cai, rango_factura_desde, rango_factura_hasta,
+     fecha_limite_emision, contacto, correo, direccion)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
     RETURNING *
     `,
@@ -37,3 +29,8 @@ export async function createSucursal(client, data) {
   );
   return rows[0];
 }
+
+module.exports = {
+  existsCai,
+  createSucursal
+};

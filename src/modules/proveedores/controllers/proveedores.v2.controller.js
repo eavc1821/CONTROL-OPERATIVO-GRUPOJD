@@ -1,8 +1,11 @@
-import pool from "../../../core/db.js";
-import { crearProveedorOperativo } from "../services/proveedores.v2.service.js";
+const pool = require("../../../core/db.js");
+const {
+  crearProveedorOperativo
+} = require("../services/proveedores.v2.service");
 
-export async function crearProveedorV2(req, res) {
+async function crearProveedorV2(req, res, next) {
   const client = await pool.connect();
+
   try {
     await client.query("BEGIN");
 
@@ -13,11 +16,12 @@ export async function crearProveedorV2(req, res) {
 
   } catch (err) {
     await client.query("ROLLBACK");
-
-    res.status(err.status || 500).json({
-      message: err.message || "Error interno"
-    });
+    next(err);
   } finally {
     client.release();
   }
 }
+
+module.exports = {
+  crearProveedorV2
+};
