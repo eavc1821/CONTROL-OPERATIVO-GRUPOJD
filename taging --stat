@@ -1,0 +1,594 @@
+[1mdiff --git a/src/app.js b/src/app.js[m
+[1mindex aa605ba..b4106b8 100644[m
+[1m--- a/src/app.js[m
+[1m+++ b/src/app.js[m
+[36m@@ -10,16 +10,14 @@[m [mconst empresasRoutes = require('./modules/empresas/empresas.routes');[m
+ const empresaMiddleware = require('./middlewares/empresa');[m
+ const bitacoraRoutes = require("./modules/bitacora/routes");[m
+ const aprobacionesRoutes = require("./modules/aprobaciones/aprobaciones.routes");[m
+[32m+[m[32mconst allowedOrigins = require("./config/cors");[m
+[32m+[m
+ [m
+ const cors = require("cors");[m
+ const path = require("path");[m
+ [m
+ const app = express();[m
+[31m-const allowedOrigins = [[m
+[31m-  "https://control-operativo.gjd78.com",[m
+[31m-  "https://control-operativo-grupojd-production.up.railway.app",[m
+[31m-  "http://localhost:5173"[m
+[31m-];[m
+[32m+[m
+ [m
+ app.use(cors({[m
+   origin: function (origin, callback) {[m
+[1mdiff --git a/src/bootstrap/env.js b/src/bootstrap/env.js[m
+[1mnew file mode 100644[m
+[1mindex 0000000..6cedda0[m
+[1m--- /dev/null[m
+[1m+++ b/src/bootstrap/env.js[m
+[36m@@ -0,0 +1,12 @@[m
+[32m+[m[32mconst path = require('path')[m
+[32m+[m[32mconst dotenv = require('dotenv')[m
+[32m+[m
+[32m+[m[32mconst NODE_ENV = process.env.NODE_ENV || 'development'[m
+[32m+[m
+[32m+[m[32mdotenv.config({[m
+[32m+[m[32m  path: path.resolve(process.cwd(), `.env.${NODE_ENV}`)[m
+[32m+[m[32m})[m
+[32m+[m
+[32m+[m[32mmodule.exports = {[m
+[32m+[m[32m  NODE_ENV[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/bootstrap/validateEnv.js b/src/bootstrap/validateEnv.js[m
+[1mnew file mode 100644[m
+[1mindex 0000000..2cb51c1[m
+[1m--- /dev/null[m
+[1m+++ b/src/bootstrap/validateEnv.js[m
+[36m@@ -0,0 +1,10 @@[m
+[32m+[m[32mconst required = [[m
+[32m+[m[32m  'DATABASE_URL',[m
+[32m+[m[32m  'JWT_SECRET'[m
+[32m+[m[32m][m
+[32m+[m
+[32m+[m[32mrequired.forEach((key) => {[m
+[32m+[m[32m  if (!process.env[key]) {[m
+[32m+[m[32m    throw new Error(`Missing required env variable: ${key}`)[m
+[32m+[m[32m  }[m
+[32m+[m[32m})[m
+[1mdiff --git a/src/config/cors.js b/src/config/cors.js[m
+[1mnew file mode 100644[m
+[1mindex 0000000..a734851[m
+[1m--- /dev/null[m
+[1m+++ b/src/config/cors.js[m
+[36m@@ -0,0 +1,24 @@[m
+[32m+[m[32mconst env = process.env.NODE_ENV || "development";[m
+[32m+[m
+[32m+[m[32mconst originsByEnv = {[m
+[32m+[m[32m  production: [[m
+[32m+[m[32m    // Frontend PROD[m
+[32m+[m[32m    "https://control-operativo.gjd78.com",[m
+[32m+[m[32m    // Backend PROD (para forms HTML)[m
+[32m+[m[32m    "https://control-operativo-grupojd-production.up.railway.app",[m
+[32m+[m[32m  ],[m
+[32m+[m[32m  staging: [[m
+[32m+[m[32m    // Frontend STAGING[m
+[32m+[m[32m    "https://co-staging.gjd78.com",[m
+[32m+[m[32m    // Backend STAGING (HTML aprobaciones)[m
+[32m+[m[32m    "https://control-operativo-grupojd-staging.up.railway.app",[m
+[32m+[m[32m  ],[m
+[32m+[m[32m  development: [[m
+[32m+[m[32m    "http://localhost:5173",[m
+[32m+[m[32m    "http://localhost:3000",[m
+[32m+[m[32m  ],[m
+[32m+[m[32m};[m
+[32m+[m
+[32m+[m[32mmodule.exports = originsByEnv[env] || [];[m
+[32m+[m
+[32m+[m[32m//SUBIR A STAGING//[m
+\ No newline at end of file[m
+[1mdiff --git a/src/core/db.js b/src/core/db.js[m
+[1mindex a354d09..e42c41f 100644[m
+[1m--- a/src/core/db.js[m
+[1m+++ b/src/core/db.js[m
+[36m@@ -4,12 +4,11 @@[m [mif (!process.env.DATABASE_URL) {[m
+   throw new Error("DATABASE_URL no está definida en el entorno");[m
+ }[m
+ [m
+[32m+[m[32mconst isRemote = ["production", "staging"].includes(process.env.NODE_ENV);[m
+[32m+[m
+ const pool = new Pool({[m
+   connectionString: process.env.DATABASE_URL,[m
+[31m-  ssl:[m
+[31m-    process.env.NODE_ENV === "production"[m
+[31m-      ? { rejectUnauthorized: false }[m
+[31m-      : false,[m
+[32m+[m[32m  ssl: isRemote ? { rejectUnauthorized: false } : false,[m
+ });[m
+ [m
+ module.exports = pool;[m
+[1mdiff --git a/src/index.js b/src/index.js[m
+[1mindex 9b01ba7..209fe07 100644[m
+[1m--- a/src/index.js[m
+[1m+++ b/src/index.js[m
+[36m@@ -1,6 +1,9 @@[m
+[31m-require('dotenv').config();[m
+[31m-const app = require('./app');[m
+[32m+[m[32mrequire('./bootstrap/env')[m
+[32m+[m[32mrequire('./bootstrap/validateEnv')[m
+ [m
+[32m+[m[32mconst app = require('./app')[m
+ [m
+[31m-const PORT = process.env.PORT || 3000;[m
+[31m-app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));[m
+\ No newline at end of file[m
+[32m+[m[32mconst PORT = process.env.PORT || 3000[m
+[32m+[m[32mapp.listen(PORT, () => {[m
+[32m+[m[32m  console.log(`Server running on ${process.env.NODE_ENV} on port ${PORT}`)[m
+[32m+[m[32m})[m
+[1mdiff --git a/src/modules/proveedores/proveedores.routes.js b/src/modules/proveedores/proveedores.routes.js[m
+[1mindex 59e4d55..dffd6ae 100644[m
+[1m--- a/src/modules/proveedores/proveedores.routes.js[m
+[1m+++ b/src/modules/proveedores/proveedores.routes.js[m
+[36m@@ -26,6 +26,7 @@[m [mrouter.get('/:id', auth, ctrl.get);[m
+ router.post([m
+   '/',[m
+   auth,[m
+[32m+[m[32m  empresa,[m
+   requirePermiso("proveedores.crear"),[m
+   validate(createProveedorSchema),[m
+   ctrl.create[m
+[36m@@ -35,6 +36,7 @@[m [mrouter.post([m
+ router.put([m
+   '/:id',[m
+   auth,[m
+[32m+[m[32m  empresa,[m
+   requirePermiso("proveedores.editar"),[m
+   validate(updateProveedorSchema),[m
+   ctrl.update[m
+[36m@@ -44,6 +46,7 @@[m [mrouter.put([m
+ router.delete([m
+   '/:id',[m
+   auth,[m
+[32m+[m[32m  empresa,[m
+   requirePermiso("proveedores.eliminar"),[m
+   ctrl.remove[m
+ );[m
+[1mdiff --git a/src/modules/proveedores/proveedores.schema.js b/src/modules/proveedores/proveedores.schema.js[m
+[1mindex 7e29cb7..db9956b 100644[m
+[1m--- a/src/modules/proveedores/proveedores.schema.js[m
+[1m+++ b/src/modules/proveedores/proveedores.schema.js[m
+[36m@@ -8,6 +8,9 @@[m [mconst createProveedorSchema = z.object({[m
+   direccion: z.string().optional().nullable(),[m
+   categoria_id: z.number().int().optional().nullable(),[m
+   cai: z.string().min(5, "El CAI es obligatorio"),[m
+[32m+[m[32m  fecha_limite_emision: z.string().regex(/^\d{2}\/\d{2}\/\d{2}$/, "Formato inválido (dd/mm/yy)").optional().nullable(),[m
+[32m+[m[32m  rango_factura_desde: z.string().regex(/^\d{3}-\d{3}-\d{2}-\d{8}$/, "Formato inválido").optional().nullable(),[m
+[32m+[m[32m  rango_factura_hasta: z.string().regex(/^\d{3}-\d{3}-\d{2}-\d{8}$/, "Formato inválido").optional().nullable(),[m
+ });[m
+ [m
+ const updateProveedorSchema = z.object({[m
+[36m@@ -18,6 +21,9 @@[m [mconst updateProveedorSchema = z.object({[m
+   direccion: z.string().optional().nullable(),[m
+   categoria_id: z.number().int().optional().nullable(),[m
+   cai: z.string().min(5).optional().nullable(),[m
+[32m+[m[32m  fecha_limite_emision: z.string().regex(/^\d{2}\/\d{2}\/\d{2}$/).optional().nullable(),[m
+[32m+[m[32m  rango_factura_desde: z.string().regex(/^\d{3}-\d{3}-\d{2}-\d{8}$/).optional().nullable(),[m
+[32m+[m[32m  rango_factura_hasta: z.string().regex(/^\d{3}-\d{3}-\d{2}-\d{8}$/).optional().nullable(),[m
+ });[m
+ [m
+ module.exports = {[m
+[1mdiff --git a/src/modules/proveedores/repository.js b/src/modules/proveedores/repository.js[m
+[1mindex 021bd63..91540ba 100644[m
+[1m--- a/src/modules/proveedores/repository.js[m
+[1m+++ b/src/modules/proveedores/repository.js[m
+[36m@@ -1,5 +1,19 @@[m
+ const pool = require('../../core/db');[m
+ [m
+[32m+[m[32mfunction parseFechaDDMMYY(value) {[m
+[32m+[m[32m  if (!value || typeof value !== "string") return null;[m
+[32m+[m
+[32m+[m[32m  const parts = value.split("/");[m
+[32m+[m[32m  if (parts.length !== 3) return null;[m
+[32m+[m
+[32m+[m[32m  const [d, m, y] = parts;[m
+[32m+[m
+[32m+[m[32m  if (!d || !m || !y) return null;[m
+[32m+[m
+[32m+[m[32m  return new Date(`20${y}-${m}-${d}`);[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m
+ async function getAll() {[m
+   const q = `[m
+     SELECT[m
+[36m@@ -10,6 +24,9 @@[m [masync function getAll() {[m
+       p.contacto,[m
+       p.correo,[m
+       p.direccion,[m
+[32m+[m[32m      p.fecha_limite_emision,[m
+[32m+[m[32m      p.rango_factura_desde,[m
+[32m+[m[32m      p.rango_factura_hasta,[m
+       p.created_at[m
+     FROM proveedores p[m
+     ORDER BY p.nombre;[m
+[36m@@ -29,6 +46,9 @@[m [masync function getByEmpresa(empresaId) {[m
+       p.direccion,[m
+       p.categoria_id,[m
+       p.cai,[m
+[32m+[m[32m      p.fecha_limite_emision,[m
+[32m+[m[32m      p.rango_factura_desde,[m
+[32m+[m[32m      p.rango_factura_hasta,[m
+       ep.activo[m
+     FROM proveedores p[m
+     JOIN empresas_proveedores ep[m
+[36m@@ -52,6 +72,9 @@[m [masync function getById(id) {[m
+       direccion,[m
+       categoria_id,[m
+       cai,[m
+[32m+[m[32m      fecha_limite_emision,[m
+[32m+[m[32m      rango_factura_desde,[m
+[32m+[m[32m      rango_factura_hasta,[m
+       created_at[m
+     FROM proveedores[m
+     WHERE id = $1;[m
+[36m@@ -93,9 +116,9 @@[m [masync function create(data) {[m
+     // 1️⃣ crear proveedor GLOBAL (SIN CAI)[m
+ const proveedorRes = await client.query([m
+   `[m
+[31m-  INSERT INTO proveedores (nombre, ruc, contacto, correo, direccion, categoria_id, cai)[m
+[31m-  VALUES ($1, $2, $3, $4, $5, $6, $7)[m
+[31m-  RETURNING id, nombre, ruc, contacto, correo, direccion, categoria_id, cai, created_at[m
+[32m+[m[32m  INSERT INTO proveedores (nombre, ruc, contacto, correo, direccion, categoria_id, fecha_limite_emision, rango_factura_desde, rango_factura_hasta, cai)[m
+[32m+[m[32m  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)[m
+[32m+[m[32m  RETURNING id, nombre, ruc, contacto, correo, direccion, categoria_id, fecha_limite_emision, rango_factura_desde, rango_factura_hasta, cai, created_at[m
+   `,[m
+   [[m
+     data.nombre,[m
+[36m@@ -104,6 +127,9 @@[m [mconst proveedorRes = await client.query([m
+     data.correo,[m
+     data.direccion,[m
+     data.categoria_id,[m
+[32m+[m[32m    parseFechaDDMMYY(data.fecha_limite_emision),[m
+[32m+[m[32m    data.rango_factura_desde,[m
+[32m+[m[32m    data.rango_factura_hasta,[m
+     data.cai[m
+   ][m
+ );[m
+[36m@@ -139,9 +165,12 @@[m [masync function update(id, payload) {[m
+       correo = COALESCE($4, correo),[m
+       direccion = COALESCE($5, direccion),[m
+       categoria_id = COALESCE($6, categoria_id),[m
+[31m-      cai = COALESCE($7, cai),[m
+[32m+[m[32m      fecha_limite_emision = COALESCE($7, fecha_limite_emision),[m
+[32m+[m[32m      rango_factura_desde = COALESCE($8, rango_factura_desde),[m
+[32m+[m[32m      rango_factura_hasta = COALESCE($9, rango_factura_hasta),[m
+[32m+[m[32m      cai = COALESCE($10, cai),[m
+       updated_at = NOW()[m
+[31m-    WHERE id = $8[m
+[32m+[m[32m    WHERE id = $11[m
+     RETURNING *;[m
+   `;[m
+ [m
+[36m@@ -152,6 +181,9 @@[m [masync function update(id, payload) {[m
+     payload.correo,[m
+     payload.direccion,[m
+     payload.categoria_id,[m
+[32m+[m[32m    parseFechaDDMMYY(payload.fecha_limite_emision),[m
+[32m+[m[32m    payload.rango_factura_desde,[m
+[32m+[m[32m    payload.rango_factura_hasta,[m
+     payload.cai,[m
+     id[m
+   ]);[m
+[1mdiff --git a/src/modules/proveedores/service.js b/src/modules/proveedores/service.js[m
+[1mindex 9388c38..654cb2a 100644[m
+[1m--- a/src/modules/proveedores/service.js[m
+[1m+++ b/src/modules/proveedores/service.js[m
+[36m@@ -1,6 +1,12 @@[m
+ const repo = require("./repository");[m
+ const bitacora = require("../bitacora/service");[m
+ [m
+[32m+[m[32m// 🔒 Función privada (NO exportar)[m
+[32m+[m[32mfunction normalizarRango(valor) {[m
+[32m+[m[32m  if (!valor) return null;[m
+[32m+[m[32m  return valor.replace(/-/g, "");[m
+[32m+[m[32m}[m
+[32m+[m
+ // Listados (sin bitácora)[m
+ async function listGlobal() {[m
+   return repo.getAll();[m
+[36m@@ -14,14 +20,33 @@[m [masync function get(id) {[m
+   return repo.getById(id);[m
+ }[m
+ [m
+[32m+[m[32m// ==========================[m
+ // Crear proveedor[m
+[32m+[m[32m// ==========================[m
+ async function create(req, data) {[m
+[31m-  const proveedor = await repo.create(data);[m
+[32m+[m
+[32m+[m[32m  // ✅ Validación semántica de rango[m
+[32m+[m[32m  if (data.rango_factura_desde && data.rango_factura_hasta) {[m
+[32m+[m[32m    const desde = normalizarRango(data.rango_factura_desde);[m
+[32m+[m[32m    const hasta = normalizarRango(data.rango_factura_hasta);[m
+[32m+[m
+[32m+[m[32m    if (desde > hasta) {[m
+[32m+[m[32m      throw new Error("El rango de facturación es inválido");[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  // 🔒 CONTRATO BLINDADO (igual que solicitudes)[m
+[32m+[m[32m  const payload = {[m
+[32m+[m[32m    ...data,[m
+[32m+[m[32m    empresa_id: req.empresa_id[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const proveedor = await repo.create(payload);[m
+ [m
+   await bitacora.registrar([m
+     {[m
+       usuario_id: req.usuario.id,[m
+[31m-      empresa_id: data.empresa_id[m
+[32m+[m[32m      empresa_id: req.empresa_id[m
+     },[m
+     {[m
+       modulo: "proveedores",[m
+[36m@@ -34,8 +59,9 @@[m [masync function create(req, data) {[m
+   return proveedor;[m
+ }[m
+ [m
+[31m-[m
+[32m+[m[32m// ==========================[m
+ // Actualizar proveedor[m
+[32m+[m[32m// ==========================[m
+ async function update(req, id, data) {[m
+   const anterior = await repo.getById(id);[m
+ [m
+[36m@@ -43,11 +69,28 @@[m [masync function update(req, id, data) {[m
+     throw new Error("Proveedor no encontrado");[m
+   }[m
+ [m
+[31m-  const actualizado = await repo.update(id, data);[m
+[32m+[m[32m  // ✅ Validación semántica de rango[m
+[32m+[m[32m  if (data.rango_factura_desde && data.rango_factura_hasta) {[m
+[32m+[m[32m    const desde = normalizarRango(data.rango_factura_desde);[m
+[32m+[m[32m    const hasta = normalizarRango(data.rango_factura_hasta);[m
+[32m+[m
+[32m+[m[32m    if (desde > hasta) {[m
+[32m+[m[32m      throw new Error("El rango de facturación es inválido");[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  // 🔒 CONTRATO BLINDADO[m
+[32m+[m[32m  const payload = {[m
+[32m+[m[32m    ...data,[m
+[32m+[m[32m    empresa_id: req.empresa_id[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const actualizado = await repo.update(id, payload);[m
+ [m
+   await bitacora.registrar([m
+     {[m
+[31m-      usuario_id: req.usuario.id[m
+[32m+[m[32m      usuario_id: req.usuario.id,[m
+[32m+[m[32m      empresa_id: req.empresa_id[m[41m  [m
+     },[m
+     {[m
+       modulo: "proveedores",[m
+[36m@@ -58,11 +101,12 @@[m [masync function update(req, id, data) {[m
+     }[m
+   );[m
+ [m
+[31m-[m
+   return actualizado;[m
+ }[m
+ [m
+[31m-// Eliminar proveedor (por empresa)[m
+[32m+[m[32m// ==========================[m
+[32m+[m[32m// Eliminar proveedor[m
+[32m+[m[32m// ==========================[m
+ async function remove(req, empresaId, id) {[m
+   const anterior = await repo.getById(id);[m
+ [m
+[36m@@ -73,18 +117,17 @@[m [masync function remove(req, empresaId, id) {[m
+   await repo.remove(empresaId, id);[m
+ [m
+   await bitacora.registrar([m
+[31m-  {[m
+[31m-    usuario_id: req.usuario.id,[m
+[31m-    empresa_id: empresaId[m
+[31m-  },[m
+[31m-  {[m
+[31m-    modulo: "proveedores",[m
+[31m-    accion: "DELETE",[m
+[31m-    descripcion: `Eliminó el proveedor ${anterior.nombre} de la empresa ${empresaId}`,[m
+[31m-    data_anterior: anterior[m
+[31m-  }[m
+[31m-);[m
+[31m-[m
+[32m+[m[32m    {[m
+[32m+[m[32m      usuario_id: req.usuario.id,[m
+[32m+[m[32m      empresa_id: empresaId[m
+[32m+[m[32m    },[m
+[32m+[m[32m    {[m
+[32m+[m[32m      modulo: "proveedores",[m
+[32m+[m[32m      accion: "DELETE",[m
+[32m+[m[32m      descripcion: `Eliminó el proveedor ${anterior.nombre} de la empresa ${empresaId}`,[m
+[32m+[m[32m      data_anterior: anterior[m
+[32m+[m[32m    }[m
+[32m+[m[32m  );[m
+ [m
+   return true;[m
+ }[m
+[1mdiff --git a/src/modules/reportes/repository.js b/src/modules/reportes/repository.js[m
+[1mindex 2a6eca7..ee378bb 100644[m
+[1m--- a/src/modules/reportes/repository.js[m
+[1m+++ b/src/modules/reportes/repository.js[m
+[36m@@ -224,7 +224,10 @@[m [masync function getProveedorPerfil(proveedorId, empresaId) {[m
+     p.id,[m
+     p.nombre,[m
+     p.ruc,[m
+[31m-    p.cai,              [m
+[32m+[m[32m    p.cai,[m[41m     [m
+[32m+[m[32m    p.fecha_limite_emision,[m
+[32m+[m[32m    p.rango_factura_desde,[m
+[32m+[m[32m    p.rango_factura_hasta,[m[41m         [m
+     p.contacto,[m
+     p.correo,[m
+     p.direccion,[m
+[1mdiff --git a/src/modules/solicitudes/service.js b/src/modules/solicitudes/service.js[m
+[1mindex b248e2d..baac305 100644[m
+[1m--- a/src/modules/solicitudes/service.js[m
+[1m+++ b/src/modules/solicitudes/service.js[m
+[36m@@ -43,7 +43,7 @@[m [masync function create(ctx, payload) {[m
+       throw new Error("No hay aprobadores configurados para la empresa");[m
+     }[m
+ [m
+[31m-    const usuariosIds = aprobadores.slice(0, 2).map(u => u.usuario_id);[m
+[32m+[m[32m    const usuariosIds = aprobadores.map(u => u.usuario_id);[m
+ [m
+     // 4️⃣ Crear aprobaciones + tokens[m
+     tokens = await aprobacionesRepo.crearAprobacionesInicialesTx([m
+[36m@@ -448,6 +448,11 @@[m [masync function listPagosBySolicitud(ctx, solicitudId) {[m
+   return repo.findPagosBySolicitud(ctx.empresaId, solicitudId);[m
+ }[m
+ [m
+[32m+[m[32m// 👉 Normalizar número de factura[m
+[32m+[m[32mfunction normalizarFactura(valor) {[m
+[32m+[m[32m  if (!valor) return null;[m
+[32m+[m[32m  return valor.replace(/-/g, "").trim();[m
+[32m+[m[32m}[m
+ [m
+ // 👉 Registrar pago (solo crédito y aprobada)[m
+ async function registrarPago(ctx, solicitudId, payload, file) {[m
+[36m@@ -462,7 +467,11 @@[m [masync function registrarPago(ctx, solicitudId, payload, file) {[m
+   try {[m
+     await client.query("BEGIN");[m
+ [m
+[32m+[m[32m    // ============================[m
+[32m+[m[32m    // 1️⃣ Obtener solicitud[m
+[32m+[m[32m    // ============================[m
+     const solicitud = await repo.findById(ctx.empresaId, solicitudId);[m
+[32m+[m
+     if (!solicitud) {[m
+       throw new Error("Solicitud no encontrada");[m
+     }[m
+[36m@@ -473,6 +482,78 @@[m [masync function registrarPago(ctx, solicitudId, payload, file) {[m
+       );[m
+     }[m
+ [m
+[32m+[m[32m    // ============================[m
+[32m+[m[32m    // 2️⃣ VALIDACIÓN FISCAL DEL PROVEEDOR[m
+[32m+[m[32m    // ============================[m
+[32m+[m[32m    const proveedor = await proveedorRepo.getById(solicitud.proveedor_id);[m
+[32m+[m
+[32m+[m[32m    if (!proveedor) {[m
+[32m+[m[32m      throw new Error("Proveedor asociado a la solicitud no existe");[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    const rangoDesdeRaw = proveedor.rango_factura_desde;[m
+[32m+[m[32m    const rangoHastaRaw = proveedor.rango_factura_hasta;[m
+[32m+[m
+[32m+[m[32m    if (rangoDesdeRaw && rangoHastaRaw) {[m
+[32m+[m[32m      if (!payload.numero_factura) {[m
+[32m+[m[32m        throw new Error("El número de factura es obligatorio");[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      // 🔹 Extraer correlativos DESDE / HASTA[m
+[32m+[m[32m      const matchDesde = rangoDesdeRaw.match(/(\d+)$/);[m
+[32m+[m[32m      const matchHasta = rangoHastaRaw.match(/(\d+)$/);[m
+[32m+[m
+[32m+[m[32m      if (!matchDesde || !matchHasta) {[m
+[32m+[m[32m        throw new Error("El rango de facturación del proveedor es inválido");[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      const correlativoDesde = BigInt(matchDesde[1]);[m
+[32m+[m[32m      const correlativoHasta = BigInt(matchHasta[1]);[m
+[32m+[m
+[32m+[m[32m      // 🔹 Correlativo ingresado por el usuario[m
+[32m+[m[32m      const correlativoIngresado = BigInt([m
+[32m+[m[32m        payload.numero_factura.replace(/\D/g, "")[m
+[32m+[m[32m      );[m
+[32m+[m
+[32m+[m[32m      // 🔒 Validación REAL de negocio[m
+[32m+[m[32m      if ([m
+[32m+[m[32m        correlativoIngresado < correlativoDesde ||[m
+[32m+[m[32m        correlativoIngresado > correlativoHasta[m
+[32m+[m[32m      ) {[m
+[32m+[m[32m        throw new Error([m
+[32m+[m[32m          "El número de factura está fuera del rango autorizado del proveedor"[m
+[32m+[m[32m        );[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      // 🔹 Reconstruir número completo SOLO para guardar[m
+[32m+[m[32m      const correlativoLength = matchHasta[1].length;[m
+[32m+[m[32m      const prefijo = normalizarFactura(rangoHastaRaw).slice([m
+[32m+[m[32m        0,[m
+[32m+[m[32m        normalizarFactura(rangoHastaRaw).length - correlativoLength[m
+[32m+[m[32m      );[m
+[32m+[m
+[32m+[m[32m      const correlativoPadded = correlativoIngresado[m
+[32m+[m[32m        .toString()[m
+[32m+[m[32m        .padStart(correlativoLength, "0");[m
+[32m+[m
+[32m+[m[32m      payload.numero_factura = prefijo + correlativoPadded;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // --- Validación de fecha límite de emisión ---[m
+[32m+[m[32m    if (proveedor.fecha_limite_emision && payload.fecha_factura) {[m
+[32m+[m[32m      const fechaFactura = new Date(payload.fecha_factura);[m
+[32m+[m[32m      const fechaLimite = new Date(proveedor.fecha_limite_emision);[m
+[32m+[m
+[32m+[m[32m      if (fechaFactura > fechaLimite) {[m
+[32m+[m[32m        throw new Error([m
+[32m+[m[32m          "La fecha de la factura excede la fecha límite de emisión del proveedor"[m
+[32m+[m[32m        );[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // ============================[m
+[32m+[m[32m    // 3️⃣ Validaciones financieras[m
+[32m+[m[32m    // ============================[m
+     const total = Number(solicitud.total || 0);[m
+ [m
+     const totalPagadoActual =[m
+[36m@@ -485,6 +566,9 @@[m [masync function registrarPago(ctx, solicitudId, payload, file) {[m
+       throw new Error("El pago excede el total de la solicitud");[m
+     }[m
+ [m
+[32m+[m[32m    // ============================[m
+[32m+[m[32m    // 4️⃣ Registrar pago[m
+[32m+[m[32m    // ============================[m
+     const pago = await repo.insertPagoTx(client, {[m
+       solicitud_id: solicitudId,[m
+       monto,[m
+[36m@@ -508,6 +592,9 @@[m [masync function registrarPago(ctx, solicitudId, payload, file) {[m
+       [payload.numero_factura, payload.fecha_factura, pago.id][m
+     );[m
+ [m
+[32m+[m[32m    // ============================[m
+[32m+[m[32m    // 5️⃣ Subir factura PDF[m
+[32m+[m[32m    // ============================[m
+     const saved = await storage.saveFileS3({[m
+       tempPath: file.path,[m
+       originalName: file.originalname,[m
+[36m@@ -523,6 +610,9 @@[m [masync function registrarPago(ctx, solicitudId, payload, file) {[m
+       [saved.url, pago.id][m
+     );[m
+ [m
+[32m+[m[32m    // ============================[m
+[32m+[m[32m    // 6️⃣ Actualizar estado de solicitud[m
+[32m+[m[32m    // ============================[m
+     let nuevoEstado = solicitud.estado;[m
+ [m
+     if (nuevoTotalPagado >= total && solicitud.estado !== "pagada") {[m
+[36m@@ -532,6 +622,9 @@[m [masync function registrarPago(ctx, solicitudId, payload, file) {[m
+ [m
+     await client.query("COMMIT");[m
+ [m
+[32m+[m[32m    // ============================[m
+[32m+[m[32m    // 7️⃣ Bitácora[m
+[32m+[m[32m    // ============================[m
+     await bitacora.registrar([m
+       {[m
+         usuario_id: ctx.usuarioId,[m
