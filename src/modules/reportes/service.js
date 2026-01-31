@@ -1,7 +1,6 @@
 const repo = require('./repository');
 const assertCtx = require('../../utils/assertReporteCtx');
 const PdfPrinter = require("pdfmake");
-const buildReporteDetalle = require("./pdf/buildReporteDetalle");
 const fonts = {
   Helvetica: {
     normal: "Helvetica",
@@ -172,11 +171,6 @@ exportDetallePDF: async (ctx) => {
     return true;
   });
 
-  return await buildReporteDetalle({
-    empresaNombre: ctx.empresaNombre || "Empresa",
-    periodo: filtros.periodo,
-    detalle: filtrado
-  });
   }catch (err) {
   console.error("❌ ERROR PDF SERVICE:", err);
   throw err;
