@@ -15,15 +15,11 @@ function normalizeEmptyStrings(obj) {
   return normalized;
 }
 
+// ✅ VALIDACIÓN NORMAL (CREATE)
 function validate(schema) {
   return (req, res, next) => {
     try {
-      // ✅ NORMALIZACIÓN PREVIA
-      req.body = normalizeEmptyStrings(req.body);
-
-      // ✅ VALIDACIÓN
       req.body = schema.parse(req.body);
-
       next();
     } catch (err) {
       if (err instanceof ZodError) {
@@ -38,4 +34,27 @@ function validate(schema) {
   };
 }
 
-module.exports = { validate };
+// ✅ VALIDACIÓN CON NORMALIZACIÓN (UPDATE)
+function validatePartial(schema) {
+  return (req, res, next) => {
+    try {
+      req.body = normalizeEmptyStrings(req.body);
+      req.body = schema.parse(req.body);
+      next();
+    } catch (err) {
+      if (err instanceof ZodError) {
+        return res.status(400).json({
+          ok: false,
+          message: "Error de validación",
+          errors: err.errors
+        });
+      }
+      next(err);
+    }
+  };
+}
+
+module.exports = {
+  validate,
+  validatePartial
+};

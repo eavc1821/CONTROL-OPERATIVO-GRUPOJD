@@ -4,7 +4,7 @@ const auth = require('../../middlewares/auth');
 const empresa = require('../../middlewares/empresa');
 const requireEmpresaAdmin = require('../../middlewares/requireEmpresaAdmin');
 const requirePermiso = require('../../middlewares/requirePermiso');
-const { validate } = require('../../core/validators');
+const { validate, validatePartial } = require('../../core/validators');
 const { createProveedorSchema, updateProveedorSchema } = require('./proveedores.schema');
 const ctrl = require('./controller');
 
