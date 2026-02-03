@@ -160,7 +160,7 @@ async function create(data) {
     await client.query("ROLLBACK");
 
     if (err.code === "23505") {
-      throw new Error("La sucursal ya existe para este proveedor");
+      throw new Error("El proveedor ya existe");
     }
 
     throw err;
@@ -215,6 +215,19 @@ async function remove(empresaId, proveedorId) {
   return rows[0];
 }
 
+async function ensureEmpresaProveedor(proveedorId, empresaId) {
+  await pool.query(
+    `
+    INSERT INTO empresas_proveedores (proveedor_id, empresa_id, activo)
+    VALUES ($1, $2, true)
+    ON CONFLICT (proveedor_id, empresa_id)
+    DO UPDATE SET activo = true
+    `,
+    [proveedorId, empresaId]
+  );
+}
+
+
 module.exports = {
   getAll,
   getByEmpresa,
@@ -223,5 +236,6 @@ module.exports = {
   getByRuc,   
   create,
   update,
-  remove
+  remove,
+  ensureEmpresaProveedor
 };

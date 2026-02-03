@@ -43,33 +43,39 @@ async function create(req, data) {
     empresa_id: req.empresa_id
   };
 
-  // ✅ NUEVO: evitar duplicar proveedor por RUC
-  let proveedor = null;
+    let proveedor = null;
 
-  if (payload.ruc) {
-    proveedor = await repo.getByRuc(payload.ruc);
-  }
+    if (payload.ruc) {
+      proveedor = await repo.getByRuc(payload.ruc);
+    }
 
-  if (!proveedor) {
-    proveedor = await repo.create(payload);
+    const esNuevoProveedor = !proveedor;
 
-    await bitacora.registrar(
-      {
-        usuario_id: req.usuario.id,
-        empresa_id: req.empresa_id
-      },
-      {
-        modulo: "proveedores",
-        accion: "CREATE",
-        descripcion: `Creó el proveedor ${proveedor.nombre}`,
-        data_nueva: proveedor
-      }
+    if (esNuevoProveedor) {
+      proveedor = await repo.create(payload);
+
+      await bitacora.registrar(
+        {
+          usuario_id: req.usuario.id,
+          empresa_id: req.empresa_id
+        },
+        {
+          modulo: "proveedores",
+          accion: "CREATE",
+          descripcion: `Creó el proveedor ${proveedor.nombre}`,
+          data_nueva: proveedor
+        }
+      );
+    }
+
+    // ✅ SIEMPRE asegurar relación con la empresa
+    await repo.ensureEmpresaProveedor(
+      proveedor.id,
+      req.empresa_id
     );
-  }
 
-  // ⚠️ Por ahora SOLO devuelve proveedor
-  // La creación de sucursal se conecta después
-  return proveedor;
+    return proveedor;
+
 }
 
 // ==========================
