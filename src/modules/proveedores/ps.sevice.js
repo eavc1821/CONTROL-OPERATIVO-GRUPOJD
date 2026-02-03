@@ -1,4 +1,4 @@
-const repo = require("./repository");
+const repo = require("./ps.repository");
 const proveedorRepo = require("../proveedores/repository");
 const bitacora = require("../bitacora/service");
 

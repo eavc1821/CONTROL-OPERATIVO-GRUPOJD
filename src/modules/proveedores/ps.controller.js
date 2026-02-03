@@ -1,4 +1,4 @@
-const service = require("./service");
+const service = require("./ps.service");
 
 function onlyAdmin(req, res) {
   if (!req.usuario || !["admin", "superadmin"].includes(req.usuario.rol)) {
