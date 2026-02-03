@@ -3,8 +3,10 @@ const required = [
   'JWT_SECRET'
 ]
 
-required.forEach((key) => {
-  if (!process.env[key]) {
-    throw new Error(`Missing required env variable: ${key}`)
-  }
-})
+module.exports = function validateEnv() {
+  required.forEach((key) => {
+    if (!process.env[key]) {
+      throw new Error(`Missing required env variable: ${key}`)
+    }
+  })
+}

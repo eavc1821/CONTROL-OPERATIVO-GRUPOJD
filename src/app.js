@@ -13,9 +13,19 @@ const aprobacionesRoutes = require("./modules/aprobaciones/aprobaciones.routes")
 const allowedOrigins = require("./config/cors");
 const cuentasFinancierasRoutes = require("./modules/cuentas_financieras/routes");
 const proveedorSucursalesRoutes = require("./modules/proveedores/ps.routes");
+const aprobacionesService = require("./modules/aprobaciones/service");
+const renderAprobacionHTML = require("./modules/aprobaciones/render");
+
 
 const cors = require("cors");
 const path = require("path");
+
+const validateEnv = require('./bootstrap/validateEnv')
+
+if (process.env.NODE_ENV === 'production') {
+  validateEnv()
+}
+
 
 const app = express();
 
@@ -41,8 +51,6 @@ app.options("*", cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const fs = require("fs");
-
 app.get("/aprobaciones", async (req, res) => {
   try {
     const { token } = req.query;
@@ -51,34 +59,17 @@ app.get("/aprobaciones", async (req, res) => {
       return res.status(400).send("Enlace inválido");
     }
 
-    // Llamamos a tu propio backend (sin CORS, sin navegador)
-    const preview = await fetch(
-      `http://localhost:${process.env.PORT || 3000}/api/v1/aprobaciones/preview?token=${token}`
-    ).then(r => r.json());
+    const result = await aprobacionesService.previewByToken(token);
 
-    if (!preview.ok) {
-      return res.send(`<h3>${preview.message || "Solicitud no disponible"}</h3>`);
+    if (result.status !== "OK") {
+      return res.send(
+        `<h3>${result.message || "Solicitud no disponible"}</h3>`
+      );
     }
 
-    const solicitud = preview.solicitud;
-
-    let html = fs.readFileSync(
-      path.join(__dirname, "../public/aprobaciones.html"),
-      "utf8"
-    );
-
-    html = html
-      .replace("{{correlativo}}", solicitud.correlativo)
-      .replace("{{empresa}}", solicitud.empresa)
-      .replace("{{solicitante}}", solicitud.solicitante)
-      .replace("{{proveedor}}", solicitud.proveedor)
-      .replace("{{total}}", solicitud.total)
-      .replace("{{tipo_pago}}", solicitud.tipo_pago)
-      .replace("{{fecha}}", new Date(solicitud.fecha_solicitud).toLocaleDateString("es-ES"))
-      .replace("{{descripcion}}", solicitud.descripcion || "Sin descripción")
-      .replace("{{token}}", token);
-
+    const html = renderAprobacionHTML(result.solicitud);
     res.send(html);
+
   } catch (err) {
     console.error(err);
     res.status(500).send("Error al cargar la solicitud");

@@ -1,40 +1,32 @@
-const puppeteer = require("puppeteer");
 const path = require("path");
 const fs = require("fs");
+const { getBrowser } = require("./browser");
+const { run } = require("./queue");
 
-module.exports = async function renderPdf(data) {
-  const browser = await puppeteer.launch({
-    args: ["--no-sandbox", "--disable-setuid-sandbox"]
-  });
 
-  const page = await browser.newPage();
+module.exports = async function renderPdf(html) {
+  return run(async () => {
+    const browser = await getBrowser();
+    const page = await browser.newPage();
 
-  const html = fs.readFileSync(
-    path.join(__dirname, "templates/reporteSolicitudes.html"),
-    "utf8"
-  );
+    try {
+      await page.setContent(html, { waitUntil: "networkidle0" });
 
-  await page.setContent(html, { waitUntil: "networkidle0" });
-  await page.addStyleTag({
-    path: path.join(__dirname, "styles/reporteSolicitudes.css")
-  });
+      const buffer = await page.pdf({
+        format: "A4",
+        printBackground: true,
+        margin: {
+          top: "20mm",
+          bottom: "20mm",
+          left: "15mm",
+          right: "15mm"
+        }
+      });
 
-  await page.evaluate((data) => {
-    window.__DATA__ = data;
-  }, data);
-
-  const pdf = await page.pdf({
-    format: "A4",
-    landscape: true,
-    printBackground: true,
-    margin: {
-      top: "20mm",
-      bottom: "15mm",
-      left: "15mm",
-      right: "15mm"
+      return buffer;
+    } finally {
+      await page.close();
     }
   });
-
-  await browser.close();
-  return pdf;
 };
+

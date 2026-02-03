@@ -184,11 +184,22 @@ exportReporteSolicitudesPDF: async (ctx) => {
     const generarReporteSolicitudesPDF =
       require("./pdf");
 
-    return await generarReporteSolicitudesPDF({
-      empresaId: ctx.empresaId,
-      periodo: ctx.filtros?.periodo,
-      filtros: ctx.filtros
-    });
+    const withTimeout = (promise, ms) =>
+      Promise.race([
+        promise,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("PDF timeout")), ms)
+        )
+      ]);
+
+    return await withTimeout(
+      generarReporteSolicitudesPDF({
+        empresaId: ctx.empresaId,
+        periodo: ctx.filtros?.periodo,
+        filtros: ctx.filtros
+      }),
+      15000 // 15s razonable incluso para PDFs grandes
+    );
 
   } catch (err) {
     console.error("❌ ERROR NUEVO PDF:", err);

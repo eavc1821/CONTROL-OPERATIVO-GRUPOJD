@@ -1,5 +1,5 @@
 require('./bootstrap/env')
-require('./bootstrap/validateEnv')
+
 
 const app = require('./app')
 
