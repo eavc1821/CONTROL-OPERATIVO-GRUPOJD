@@ -12,7 +12,7 @@ const bitacoraRoutes = require("./modules/bitacora/routes");
 const aprobacionesRoutes = require("./modules/aprobaciones/aprobaciones.routes");
 const allowedOrigins = require("./config/cors");
 const cuentasFinancierasRoutes = require("./modules/cuentas_financieras/routes");
-const proveedorSucursalesRoutes = require("./modules/proveedores/routes");
+const proveedorSucursalesRoutes = require("./modules/proveedores/ps.routes");
 
 const cors = require("cors");
 const path = require("path");
