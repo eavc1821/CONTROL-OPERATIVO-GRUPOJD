@@ -158,6 +158,11 @@ async function create(data) {
 
   } catch (err) {
     await client.query("ROLLBACK");
+
+    if (err.code === "23505") {
+      throw new Error("La sucursal ya existe para este proveedor");
+    }
+
     throw err;
   } finally {
     client.release();

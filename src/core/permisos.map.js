@@ -12,7 +12,10 @@ module.exports = {
     "proveedores.listar",
     "proveedores.crear",
     "proveedores.editar",
-    "reportes.ver"
+    "reportes.ver",
+    "pagos.editar",
+    "pagos.ver",
+    "pagos.listar"
   ],
 
   read: [
