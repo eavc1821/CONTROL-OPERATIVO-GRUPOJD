@@ -12,7 +12,7 @@ const bitacoraRoutes = require("./modules/bitacora/routes");
 const aprobacionesRoutes = require("./modules/aprobaciones/aprobaciones.routes");
 const allowedOrigins = require("./config/cors");
 const cuentasFinancierasRoutes = require("./modules/cuentas_financieras/routes");
-
+const proveedorSucursalesRoutes = require("./modules/proveedores/routes");
 
 const cors = require("cors");
 const path = require("path");
@@ -97,6 +97,7 @@ app.use('/api/v1/categorias', categoriasRoutes);
 app.use('/api/v1/empresas', empresasRoutes);
 app.use("/api/v1/bitacora", bitacoraRoutes);
 app.use("/api/v1/cuentas-financieras", cuentasFinancierasRoutes);
+app.use("/api/v1", proveedorSucursalesRoutes);
 app.use(express.static("public"));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
