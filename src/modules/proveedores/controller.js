@@ -155,11 +155,26 @@ async function remove(req, res, next) {
   }
 }
 
+
+async function listForUI(req, res, next) {
+  try {
+    const data = await service.listForUI();
+    res.json({
+      ok: true,
+      data
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+
 module.exports = {
   list,
   listByEmpresa,
   get,
   create,
   update,
-  remove
+  remove,
+  listForUI
 };

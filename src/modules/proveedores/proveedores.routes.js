@@ -32,6 +32,12 @@ router.post(
   ctrl.create
 );
 
+router.get(
+  "/listado",
+  auth,
+  empresa,
+  ctrl.listForUI
+);
 
 router.put(
   '/:id',

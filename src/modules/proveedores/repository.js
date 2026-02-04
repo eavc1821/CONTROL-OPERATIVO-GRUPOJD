@@ -227,6 +227,31 @@ async function ensureEmpresaProveedor(proveedorId, empresaId) {
   );
 }
 
+async function listForUI() {
+  const q = `
+    SELECT
+      p.id AS proveedor_id,
+      ps.id AS sucursal_id,
+      p.nombre,
+      p.ruc,
+      p.contacto,
+      p.correo,
+      ps.cai,
+      ps.fecha_limite_emision,
+      ps.rango_factura_desde,
+      ps.rango_factura_hasta
+    FROM proveedores p
+    JOIN proveedor_sucursales ps
+      ON ps.proveedor_id = p.id
+    ORDER BY p.nombre, ps.created_at;
+  `;
+
+  const { rows } = await pool.query(q);
+  return rows;
+}
+
+
+
 
 module.exports = {
   getAll,
@@ -237,5 +262,6 @@ module.exports = {
   create,
   update,
   remove,
-  ensureEmpresaProveedor
+  ensureEmpresaProveedor,
+  listForUI
 };

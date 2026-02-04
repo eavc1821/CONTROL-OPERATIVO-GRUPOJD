@@ -146,6 +146,10 @@ async function getByRuc(ruc) {
   return repo.getByRuc(ruc);
 }
 
+async function listForUI() {
+  return repo.listForUI();
+}
+
 
 module.exports = {
   listGlobal,
@@ -154,5 +158,6 @@ module.exports = {
   create,
   update,
   remove,
-  getByRuc
+  getByRuc,
+  listForUI
 };
