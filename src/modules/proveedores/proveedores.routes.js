@@ -10,6 +10,12 @@ const ctrl = require('./controller');
 
 router.get('/', auth, ctrl.list);
 
+router.get(
+  "/listado",
+  auth,
+  empresa,
+  ctrl.listForUI
+);
 
 // Proveedores por empresa (para solicitudes)
 router.get(
@@ -32,12 +38,6 @@ router.post(
   ctrl.create
 );
 
-router.get(
-  "/listado",
-  auth,
-  empresa,
-  ctrl.listForUI
-);
 
 router.put(
   '/:id',
