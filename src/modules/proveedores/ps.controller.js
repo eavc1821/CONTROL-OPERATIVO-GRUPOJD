@@ -12,20 +12,14 @@ function onlyAdmin(req, res) {
 }
 
 // ==========================
-// Listar sucursales por proveedor
+// Listar sucursales
 // ==========================
 async function listByProveedor(req, res, next) {
   try {
     const data = await service.listByProveedor(req.params.id);
-
     res.json({
       ok: true,
-      data,
-      proveedor_id: req.params.id,
-      empresaContexto: {
-        id: req.empresa_id,
-        tipo: req.empresaTipo
-      }
+      data
     });
   } catch (err) {
     next(err);
@@ -47,13 +41,18 @@ async function create(req, res, next) {
 
     res.status(201).json({
       ok: true,
-      data,
-      empresaContexto: {
-        id: req.empresa_id,
-        tipo: req.empresaTipo
-      }
+      data
     });
+
   } catch (err) {
+    // 🧠 Error de negocio: CAI duplicado
+    if (err.code === "CAI_DUPLICADO") {
+      return res.status(409).json({
+        ok: false,
+        message: err.message
+      });
+    }
+
     next(err);
   }
 }

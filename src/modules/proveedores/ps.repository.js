@@ -7,8 +7,6 @@ function parseFechaDDMMYY(value) {
   if (parts.length !== 3) return null;
 
   const [d, m, y] = parts;
-  if (!d || !m || !y) return null;
-
   return new Date(`20${y}-${m}-${d}`);
 }
 
@@ -37,16 +35,6 @@ async function getByProveedor(proveedorId) {
   return rows;
 }
 
-async function getById(id) {
-  const q = `
-    SELECT *
-    FROM proveedor_sucursales
-    WHERE id = $1;
-  `;
-  const { rows } = await pool.query(q, [id]);
-  return rows[0];
-}
-
 // ==========================
 // Create
 // ==========================
@@ -67,23 +55,33 @@ async function create(data) {
     RETURNING *;
   `;
 
-  const { rows } = await pool.query(q, [
-    data.proveedor_id,
-    data.nombre,
-    data.contacto,
-    data.correo,
-    data.direccion,
-    data.cai,
-    data.rango_factura_desde,
-    data.rango_factura_hasta,
-    parseFechaDDMMYY(data.fecha_limite_emision)
-  ]);
+  try {
+    const { rows } = await pool.query(q, [
+      data.proveedor_id,
+      data.nombre,
+      data.contacto,
+      data.correo,
+      data.direccion,
+      data.cai,
+      data.rango_factura_desde,
+      data.rango_factura_hasta,
+      parseFechaDDMMYY(data.fecha_limite_emision)
+    ]);
 
-  return rows[0];
+    return rows[0];
+
+  } catch (err) {
+    // 🔒 CAI duplicado
+    if (err.code === "23505") {
+      const error = new Error("El CAI ya está registrado para este proveedor");
+      error.code = "CAI_DUPLICADO";
+      throw error;
+    }
+    throw err;
+  }
 }
 
 module.exports = {
   getByProveedor,
-  getById,
   create
 };
