@@ -4,6 +4,18 @@ const authMiddleware = require("../../middlewares/auth");
 
 const router = express.Router();
 
+router.get(
+  "/proveedores/:proveedorId/sucursales/:sucursalId",
+  authMiddleware,
+  controller.get
+);
+
+router.put(
+  "/proveedores/:proveedorId/sucursales/:sucursalId",
+  authMiddleware,
+  controller.update
+);
+
 // /proveedores/:id/sucursales
 router.get(
   "/proveedores/:id/sucursales",

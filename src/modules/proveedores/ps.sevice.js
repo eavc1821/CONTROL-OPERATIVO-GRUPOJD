@@ -62,7 +62,70 @@ async function create(req, proveedorId, data) {
   return sucursal;
 }
 
+
+async function getById(proveedorId, sucursalId) {
+  const data = await repo.getById(proveedorId, sucursalId);
+
+  if (!data) {
+    throw new Error("Sucursal no encontrada");
+  }
+
+  return data;
+}
+
+async function update(req, proveedorId, sucursalId, data) {
+  // 1️⃣ Obtener estado anterior de la sucursal
+  const anterior = await repo.getById(proveedorId, sucursalId);
+
+  if (!anterior) {
+    throw new Error("Sucursal no encontrada");
+  }
+
+  // 2️⃣ ❌ Eliminar campos que NO pertenecen a la sucursal
+  const {
+    nombre,        // si decides no editar nombre de sucursal, elimínalo aquí
+    contacto,
+    correo,
+    direccion,
+    ...fiscalData
+  } = data;
+
+  const payload = {
+    ...fiscalData,
+    proveedor_id: proveedorId
+  };
+
+  // 3️⃣ Actualizar sucursal
+  const actualizado = await repo.update(
+    proveedorId,
+    sucursalId,
+    payload
+  );
+
+  // 4️⃣ Registrar bitácora (MISMO patrón que proveedores)
+  await bitacora.registrar(
+    {
+      usuario_id: req.usuario.id,
+      empresa_id: req.empresa_id
+    },
+    {
+      modulo: "proveedor_sucursales",
+      accion: "UPDATE",
+      descripcion: `Actualizó la sucursal ${anterior.nombre}`,
+      data_anterior: anterior,
+      data_nueva: actualizado
+    }
+  );
+
+  return actualizado;
+}
+
+
+
+
 module.exports = {
   listByProveedor,
-  create
+  create,
+  getById,
+  update
 };

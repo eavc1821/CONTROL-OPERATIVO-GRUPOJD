@@ -57,7 +57,62 @@ async function create(req, res, next) {
   }
 }
 
+async function get(req, res, next) {
+  try {
+    const { proveedorId, sucursalId } = req.params;
+
+    const data = await service.getById(
+      Number(proveedorId),
+      Number(sucursalId)
+    );
+
+    res.json({
+      ok: true,
+      data
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ==========================
+// Actualizar sucursal
+// ==========================
+async function update(req, res, next) {
+  if (!onlyAdmin(req, res)) return;
+
+  try {
+    const { proveedorId, sucursalId } = req.params;
+
+    const data = await service.update(
+      req,
+      Number(proveedorId),
+      Number(sucursalId),
+      req.body
+    );
+
+    res.json({
+      ok: true,
+      data
+    });
+
+  } catch (err) {
+    if (err.code === "CAI_DUPLICADO") {
+      return res.status(409).json({
+        ok: false,
+        message: err.message
+      });
+    }
+
+    next(err);
+  }
+}
+
+
+
 module.exports = {
   listByProveedor,
-  create
+  create,
+  get,
+  update
 };
