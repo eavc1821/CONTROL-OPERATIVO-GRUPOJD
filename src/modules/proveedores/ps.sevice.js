@@ -81,28 +81,29 @@ async function update(req, proveedorId, sucursalId, data) {
     throw new Error("Sucursal no encontrada");
   }
 
-  // 2️⃣ ❌ Eliminar campos que NO pertenecen a la sucursal
-  const {
-    nombre,        // si decides no editar nombre de sucursal, elimínalo aquí
-    contacto,
-    correo,
-    direccion,
-    ...fiscalData
-  } = data;
-
+  // 2️⃣ Contrato explícito: la sucursal ES el proveedor
   const payload = {
-    ...fiscalData,
+    nombre: data.nombre,
+    contacto: data.contacto,
+    correo: data.correo,
+    direccion: data.direccion,
+
+    cai: data.cai,
+    rango_factura_desde: data.rango_factura_desde,
+    rango_factura_hasta: data.rango_factura_hasta,
+    fecha_limite_emision: data.fecha_limite_emision,
+
     proveedor_id: proveedorId
   };
 
-  // 3️⃣ Actualizar sucursal
+  // 3️⃣ Actualizar sucursal (aislada, sin cascadas)
   const actualizado = await repo.update(
     proveedorId,
     sucursalId,
     payload
   );
 
-  // 4️⃣ Registrar bitácora (MISMO patrón que proveedores)
+  // 4️⃣ Registrar bitácora
   await bitacora.registrar(
     {
       usuario_id: req.usuario.id,
@@ -119,8 +120,6 @@ async function update(req, proveedorId, sucursalId, data) {
 
   return actualizado;
 }
-
-
 
 
 module.exports = {

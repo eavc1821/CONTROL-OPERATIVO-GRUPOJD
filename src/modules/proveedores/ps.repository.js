@@ -87,30 +87,28 @@ async function create(data) {
 async function getById(proveedorId, sucursalId) {
   const q = `
     SELECT
-      p.id AS proveedor_id,
-      p.nombre AS proveedor_nombre,
-      p.ruc,
-      p.contacto,
-      p.correo,
-      p.direccion,
-      p.categoria_id,
-
       ps.id AS sucursal_id,
-      ps.nombre AS sucursal_nombre,
+      ps.proveedor_id,
+      ps.nombre,
+      ps.contacto,
+      ps.correo,
+      ps.direccion,
       ps.cai,
       ps.rango_factura_desde,
       ps.rango_factura_hasta,
-      ps.fecha_limite_emision
-    FROM proveedores p
-    JOIN proveedor_sucursales ps
-      ON ps.proveedor_id = p.id
-    WHERE p.id = $1
-      AND ps.id = $2;
+      ps.fecha_limite_emision,
+      p.ruc
+    FROM proveedor_sucursales ps
+    JOIN proveedores p
+      ON p.id = ps.proveedor_id
+    WHERE ps.id = $1
+      AND ps.proveedor_id = $2;
   `;
 
-  const { rows } = await pool.query(q, [proveedorId, sucursalId]);
+  const { rows } = await pool.query(q, [sucursalId, proveedorId]);
   return rows[0];
 }
+
 
 async function update(proveedorId, sucursalId, data) {
   const q = `
