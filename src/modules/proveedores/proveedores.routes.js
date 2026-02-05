@@ -25,6 +25,14 @@ router.get(
   ctrl.listByEmpresa
 );
 
+// 🔹 TODAS LAS SUCURSALES (para solicitudes)
+router.get(
+  "/sucursales",
+  auth,
+  empresa,
+  ctrl.listSucursales
+);
+
 
 router.get('/:id', auth, ctrl.get);
 

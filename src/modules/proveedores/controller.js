@@ -168,6 +168,16 @@ async function listForUI(req, res, next) {
   }
 }
 
+async function listSucursales(req, res, next) {
+  try {
+    const data = await repo.listSucursalesByEmpresa(req.empresa_id);
+    res.json({ ok: true, data });
+  } catch (err) {
+    next(err);
+  }
+}
+
+
 
 module.exports = {
   list,
@@ -176,5 +186,6 @@ module.exports = {
   create,
   update,
   remove,
-  listForUI
+  listForUI,
+  listSucursales
 };

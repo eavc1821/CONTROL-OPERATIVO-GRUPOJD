@@ -251,6 +251,24 @@ async function listForUI() {
 }
 
 
+async function listSucursalesByEmpresa(empresaId) {
+  const q = `
+    SELECT
+      ps.id,
+      ps.nombre,
+      ps.cai,
+      p.categoria_id
+    FROM proveedor_sucursales ps
+    JOIN proveedores p ON p.id = ps.proveedor_id
+    WHERE p.empresa_id = $1
+    ORDER BY ps.nombre
+  `;
+
+  const { rows } = await pool.query(q, [empresaId]);
+  return rows;
+}
+
+
 
 
 module.exports = {
@@ -263,5 +281,6 @@ module.exports = {
   update,
   remove,
   ensureEmpresaProveedor,
-  listForUI
+  listForUI,
+  listSucursalesByEmpresa
 };
