@@ -52,10 +52,23 @@ async function create(req, res, next) {
       usuarioId: req.usuario.id
     };
 
+    if (!req.body.proveedor_sucursal_id) {
+      return res.status(400).json({
+        ok: false,
+        message: "El proveedor (sucursal) es obligatorio"
+      });
+    }
+
     const payload = {
-      ...req.body,
+      proveedor_sucursal_id: Number(req.body.proveedor_sucursal_id),
+      categoria_id: req.body.categoria_id || null,
+      tipo_pago: req.body.tipo_pago || "contado",
+      total: req.body.total,
+      descripcion: req.body.descripcion || "",
+      notas: req.body.notas || "",
       fecha_solicitud: req.body.fecha_solicitud || new Date()
     };
+
 
     const solicitud = await service.create(ctx, payload);
 

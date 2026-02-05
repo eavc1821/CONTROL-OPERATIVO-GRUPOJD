@@ -1,15 +1,41 @@
 // src/modules/solicitudes/repository.js
 const pool = require('../../core/db');
 
-async function createSolicitud({ proveedor_id, usuario_id, tipo_pago, notas, total, fecha_solicitud, descripcion,categoria_id, empresa_id }) {
+async function createSolicitud({  proveedor_sucursal_id,
+  proveedor_id,
+  proveedor_cai,
+  usuario_id,
+  tipo_pago,
+  notas,
+  total,
+  fecha_solicitud,
+  descripcion,
+  categoria_id,
+  empresa_id }) {
+    
   const q = `
-    INSERT INTO solicitudes 
-    (proveedor_id, usuario_id, tipo_pago, notas, total, fecha_solicitud, descripcion,categoria_id, empresa_id)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-    RETURNING *
-  `;
+  INSERT INTO solicitudes
+    (
+      proveedor_sucursal_id,
+      proveedor_id,
+      proveedor_cai,
+      usuario_id,
+      tipo_pago,
+      notas,
+      total,
+      fecha_solicitud,
+      descripcion,
+      categoria_id,
+      empresa_id
+    )
+  VALUES
+    ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+  RETURNING *
+`;
   const { rows } = await pool.query(q, [
+    proveedor_sucursal_id,
     proveedor_id,
+    proveedor_cai,
     usuario_id,
     tipo_pago,
     notas,
@@ -26,7 +52,9 @@ async function createSolicitud({ proveedor_id, usuario_id, tipo_pago, notas, tot
 async function createSolicitudTx(
   client,
   {
+    proveedor_sucursal_id,
     proveedor_id,
+    proveedor_cai,
     usuario_id,
     tipo_pago,
     notas,
@@ -34,19 +62,33 @@ async function createSolicitudTx(
     fecha_solicitud,
     descripcion,
     categoria_id,
-    empresa_id
+    empresa_id 
   }
 ) {
   const q = `
-    INSERT INTO solicitudes 
-      (proveedor_id, usuario_id, tipo_pago, notas, total, fecha_solicitud, descripcion, categoria_id, empresa_id)
-    VALUES
-      ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-    RETURNING *
+    INSERT INTO solicitudes
+    (
+      proveedor_sucursal_id,
+      proveedor_id,
+      proveedor_cai,
+      usuario_id,
+      tipo_pago,
+      notas,
+      total,
+      fecha_solicitud,
+      descripcion,
+      categoria_id,
+      empresa_id
+    )
+  VALUES
+    ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+  RETURNING *
   `;
 
   const { rows } = await client.query(q, [
+    proveedor_sucursal_id,
     proveedor_id,
+    proveedor_cai,
     usuario_id,
     tipo_pago,
     notas,
@@ -64,19 +106,18 @@ async function createSolicitudTx(
 async function update(id, { proveedor_id, total, tipo_pago, descripcion, notas, empresaId}) {
   const q = `
     UPDATE solicitudes
-    SET 
-      proveedor_id = $1,
-      total = $2,
-      tipo_pago = $3,
-      descripcion = $4,
-      notas = $5,
+    SET
+      total = $1,
+      tipo_pago = $2,
+      descripcion = $3,
+      notas = $4,
       updated_at = NOW()
-    WHERE id = $6 and empresa_id = $7
+    WHERE id = $5
+      AND empresa_id = $6
     RETURNING *;
   `;
 
   const params = [
-    proveedor_id,
     total,
     tipo_pago,
     descripcion,
