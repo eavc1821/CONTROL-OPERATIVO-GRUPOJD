@@ -23,38 +23,12 @@ async function create(ctx, payload) {
   try {
     await client.query("BEGIN");
 
-    // 🔹 1.1 Obtener sucursal (proveedor operativo)
-      const sucursal = await client.query(
-        `
-        SELECT id, proveedor_id, cai
-        FROM proveedor_sucursales
-        WHERE id = $1
-        `,
-        [payload.proveedor_sucursal_id]
-      );
-
-      const sucursalRow = sucursal.rows[0];
-
-      if (!sucursalRow) {
-        throw new Error("Sucursal de proveedor no encontrada");
-      }
-
-
     // 1️⃣ Datos base de la solicitud
     const data = {
-      proveedor_sucursal_id: payload.proveedor_sucursal_id,
-      proveedor_id: sucursalRow.proveedor_id,   // 🔒 derivado
-      proveedor_cai: sucursalRow.cai,            // 📸 snapshot
-      categoria_id: payload.categoria_id,
-      tipo_pago: payload.tipo_pago,
-      total: payload.total,
-      descripcion: payload.descripcion,
-      notas: payload.notas,
-      fecha_solicitud: payload.fecha_solicitud,
+      ...payload,
       usuario_id: ctx.usuarioId,
       empresa_id: ctx.empresaId
     };
-
 
     // 2️⃣ Crear solicitud
     solicitud = await repo.createSolicitudTx(client, data);
@@ -118,22 +92,14 @@ for (const { usuario_id, token } of tokens) {
       continue;
     }
 
-   const sucursal = await pool.query(
-      `
-      SELECT nombre
-      FROM proveedor_sucursales
-      WHERE id = $1
-      `,
-      [solicitud.proveedor_sucursal_id]
+    const proveedor = await proveedorRepo.getById(
+      solicitud.proveedor_id
     );
-
-    const proveedorNombre = sucursal.rows[0]?.nombre || "Proveedor";
-
 
     const email = buildApprovalEmail({
       solicitud: {
         correlativo: solicitud.correlativo,
-        proveedor_nombre: proveedorNombre,
+        proveedor_nombre: proveedor.nombre,
         total: solicitud.total,
         tipo_pago: solicitud.tipo_pago
       },
@@ -233,9 +199,7 @@ async function approveWithFile(ctx, id, payload, file) {
 
     // 🔥 Leer de la tabla real, no de la vista
     const { rows } = await client.query(
-      `SELECT proveedor_sucursal_id, correlativo
-      FROM solicitudes
-      WHERE id = $1`,
+      `SELECT proveedor_id, correlativo FROM solicitudes WHERE id = $1`,
       [id]
     );
 
@@ -244,8 +208,8 @@ async function approveWithFile(ctx, id, payload, file) {
 
     // Validar CAI del proveedor
     const caiResult = await client.query(
-      `SELECT cai FROM proveedor_sucursales WHERE id = $1`,
-      [solicitud.proveedor_sucursal_id]
+      `SELECT cai FROM proveedores WHERE id = $1`,
+      [solicitud.proveedor_id]
     );
 
     const proveedorCai = caiResult.rows[0]?.cai;
@@ -263,11 +227,11 @@ async function approveWithFile(ctx, id, payload, file) {
     if (!updated) throw new Error("No se pudo aprobar la solicitud");
 
 
-    // console.log("DEBUG_APROBAR", {
-    //   solicitudId: id,
-    //   proveedorId: solicitud.proveedor_id,
-    //   proveedorCai
-    // });
+    console.log("DEBUG_APROBAR", {
+      solicitudId: id,
+      proveedorId: solicitud.proveedor_id,
+      proveedorCai
+    });
 
     // Congelar CAI
     await client.query(
@@ -523,19 +487,7 @@ async function registrarPago(ctx, solicitudId, payload, file) {
     // ============================
     // 2️⃣ VALIDACIÓN FISCAL DEL PROVEEDOR
     // ============================
-    const sucursalResult = await client.query(
-      `
-      SELECT
-        rango_factura_desde,
-        rango_factura_hasta,
-        fecha_limite_emision
-      FROM proveedor_sucursales
-      WHERE id = $1
-      `,
-      [solicitud.proveedor_sucursal_id]
-    );
-
-    const proveedor = sucursalResult.rows[0];
+    const proveedor = await proveedorRepo.getById(solicitud.proveedor_id);
 
     if (!proveedor) {
       throw new Error("Proveedor asociado a la solicitud no existe");

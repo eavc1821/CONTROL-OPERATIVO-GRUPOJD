@@ -7,23 +7,26 @@ function parseFechaDDMMYY(value) {
   if (parts.length !== 3) return null;
 
   const [d, m, y] = parts;
+
   if (!d || !m || !y) return null;
 
   return new Date(`20${y}-${m}-${d}`);
 }
 
-// ==========================
-// Queries
-// ==========================
+
 async function getAll() {
   const q = `
     SELECT
       p.id,
       p.nombre,
       p.ruc,
+      p.cai,
       p.contacto,
       p.correo,
       p.direccion,
+      p.fecha_limite_emision,
+      p.rango_factura_desde,
+      p.rango_factura_hasta,
       p.created_at
     FROM proveedores p
     ORDER BY p.nombre;
@@ -42,6 +45,10 @@ async function getByEmpresa(empresaId) {
       p.correo,
       p.direccion,
       p.categoria_id,
+      p.cai,
+      p.fecha_limite_emision,
+      p.rango_factura_desde,
+      p.rango_factura_hasta,
       ep.activo
     FROM proveedores p
     JOIN empresas_proveedores ep
@@ -64,6 +71,10 @@ async function getById(id) {
       correo,
       direccion,
       categoria_id,
+      cai,
+      fecha_limite_emision,
+      rango_factura_desde,
+      rango_factura_hasta,
       created_at
     FROM proveedores
     WHERE id = $1;
@@ -82,6 +93,7 @@ async function getByEmpresaAndId(empresaId, proveedorId) {
       p.correo,
       p.direccion,
       p.categoria_id,
+      p.cai,
       ep.activo
     FROM proveedores p
     JOIN empresas_proveedores ep
@@ -89,89 +101,60 @@ async function getByEmpresaAndId(empresaId, proveedorId) {
     WHERE ep.empresa_id = $1
       AND p.id = $2;
   `;
+
   const { rows } = await pool.query(q, [empresaId, proveedorId]);
   return rows[0];
 }
 
-// ✅ NUEVO (mínimo, necesario)
-async function getByRuc(ruc) {
-  const { rows } = await pool.query(
-    `SELECT * FROM proveedores WHERE ruc = $1`,
-    [ruc]
-  );
-  return rows[0];
-}
 
-// ==========================
-// Create
-// ==========================
 async function create(data) {
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    // ✅ crear proveedor GLOBAL (SIN CAI / SIN fiscalidad)
-    const proveedorRes = await client.query(
-      `
-      INSERT INTO proveedores (
-        nombre,
-        ruc,
-        contacto,
-        correo,
-        direccion,
-        categoria_id
-      )
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING
-        id,
-        nombre,
-        ruc,
-        contacto,
-        correo,
-        direccion,
-        categoria_id,
-        created_at
-      `,
-      [
-        data.nombre,
-        data.ruc,
-        data.contacto,
-        data.correo,
-        data.direccion,
-        data.categoria_id
-      ]
-    );
+    // 1️⃣ crear proveedor GLOBAL (SIN CAI)
+const proveedorRes = await client.query(
+  `
+  INSERT INTO proveedores (nombre, ruc, contacto, correo, direccion, categoria_id, fecha_limite_emision, rango_factura_desde, rango_factura_hasta, cai)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+  RETURNING id, nombre, ruc, contacto, correo, direccion, categoria_id, fecha_limite_emision, rango_factura_desde, rango_factura_hasta, cai, created_at
+  `,
+  [
+    data.nombre,
+    data.ruc,
+    data.contacto,
+    data.correo,
+    data.direccion,
+    data.categoria_id,
+    parseFechaDDMMYY(data.fecha_limite_emision),
+    data.rango_factura_desde,
+    data.rango_factura_hasta,
+    data.cai
+  ]
+);
 
-    const proveedor = proveedorRes.rows[0];
+const proveedor = proveedorRes.rows[0];
 
-    await client.query(
-      `
-      INSERT INTO empresas_proveedores (proveedor_id, empresa_id, activo)
-      VALUES ($1, $2, true)
-      `,
-      [proveedor.id, data.empresa_id]
-    );
-
-    await client.query("COMMIT");
-    return proveedor;
+await client.query(
+  `
+  INSERT INTO empresas_proveedores (proveedor_id, empresa_id, activo)
+  VALUES ($1, $2, true)
+  `,
+  [proveedor.id, data.empresa_id]
+);
+await client.query("COMMIT");
+return proveedor;
 
   } catch (err) {
     await client.query("ROLLBACK");
-
-    if (err.code === "23505") {
-      throw new Error("El proveedor ya existe");
-    }
-
     throw err;
   } finally {
     client.release();
   }
 }
-//comentario
-// ==========================
-// Update
-// ==========================
+
+
 async function update(id, payload) {
   const q = `
     UPDATE proveedores
@@ -182,8 +165,12 @@ async function update(id, payload) {
       correo = COALESCE($4, correo),
       direccion = COALESCE($5, direccion),
       categoria_id = COALESCE($6, categoria_id),
+      fecha_limite_emision = COALESCE($7, fecha_limite_emision),
+      rango_factura_desde = COALESCE($8, rango_factura_desde),
+      rango_factura_hasta = COALESCE($9, rango_factura_hasta),
+      cai = COALESCE($10, cai),
       updated_at = NOW()
-    WHERE id = $7
+    WHERE id = $11
     RETURNING *;
   `;
 
@@ -194,15 +181,18 @@ async function update(id, payload) {
     payload.correo,
     payload.direccion,
     payload.categoria_id,
+    parseFechaDDMMYY(payload.fecha_limite_emision),
+    payload.rango_factura_desde,
+    payload.rango_factura_hasta,
+    payload.cai,
     id
   ]);
 
   return rows[0];
 }
 
-// ==========================
-// Remove
-// ==========================
+
+
 async function remove(empresaId, proveedorId) {
   const q = `
     UPDATE empresas_proveedores
@@ -211,76 +201,11 @@ async function remove(empresaId, proveedorId) {
       AND proveedor_id = $2
     RETURNING proveedor_id;
   `;
+
   const { rows } = await pool.query(q, [empresaId, proveedorId]);
   return rows[0];
 }
 
-async function ensureEmpresaProveedor(proveedorId, empresaId) {
-  await pool.query(
-    `
-    INSERT INTO empresas_proveedores (proveedor_id, empresa_id, activo)
-    VALUES ($1, $2, true)
-    ON CONFLICT (proveedor_id, empresa_id)
-    DO UPDATE SET activo = true
-    `,
-    [proveedorId, empresaId]
-  );
-}
-
-async function listForUI() {
-  const q = `
-    SELECT
-      p.id AS proveedor_id,
-      ps.id AS sucursal_id,
-      p.nombre,
-      p.ruc,
-      p.contacto,
-      p.correo,
-      ps.cai,
-      ps.fecha_limite_emision,
-      ps.rango_factura_desde,
-      ps.rango_factura_hasta
-    FROM proveedores p
-    JOIN proveedor_sucursales ps
-      ON ps.proveedor_id = p.id
-    ORDER BY p.nombre, ps.created_at;
-  `;
-
-  const { rows } = await pool.query(q);
-  return rows;
-}
 
 
-async function listSucursalesByEmpresa(empresaId) {
-  const q = `
-    SELECT
-      ps.id,
-      ps.nombre,
-      ps.cai,
-      p.categoria_id
-    FROM proveedor_sucursales ps
-    JOIN proveedores p ON p.id = ps.proveedor_id
-    WHERE p.empresa_id = $1
-    ORDER BY ps.nombre
-  `;
-
-  const { rows } = await pool.query(q, [empresaId]);
-  return rows;
-}
-
-
-
-
-module.exports = {
-  getAll,
-  getByEmpresa,
-  getById,
-  getByEmpresaAndId,
-  getByRuc,   
-  create,
-  update,
-  remove,
-  ensureEmpresaProveedor,
-  listForUI,
-  listSucursalesByEmpresa
-};
+module.exports = { getAll, getByEmpresa, getById, getByEmpresaAndId, create, update, remove };

@@ -1,9 +1,13 @@
 const repo = require("./repository");
 const bitacora = require("../bitacora/service");
 
-// ==========================
+// 🔒 Función privada (NO exportar)
+function normalizarRango(valor) {
+  if (!valor) return null;
+  return valor.replace(/-/g, "");
+}
+
 // Listados (sin bitácora)
-// ==========================
 async function listGlobal() {
   return repo.getAll();
 }
@@ -21,55 +25,39 @@ async function get(id) {
 // ==========================
 async function create(req, data) {
 
-  // ❌ eliminar campos que NO pertenecen al proveedor
-  const {
-    cai,
-    rango_factura_desde,
-    rango_factura_hasta,
-    fecha_limite_emision,
-    ...proveedorData
-  } = data;
+  // ✅ Validación semántica de rango
+  if (data.rango_factura_desde && data.rango_factura_hasta) {
+    const desde = normalizarRango(data.rango_factura_desde);
+    const hasta = normalizarRango(data.rango_factura_hasta);
 
-  // 🔒 contrato blindado
+    if (desde > hasta) {
+      throw new Error("El rango de facturación es inválido");
+    }
+  }
+
+  // 🔒 CONTRATO BLINDADO (igual que solicitudes)
   const payload = {
-    ...proveedorData,
+    ...data,
     empresa_id: req.empresa_id
   };
 
-  let proveedor = null;
+  const proveedor = await repo.create(payload);
 
-  if (payload.ruc) {
-    proveedor = await repo.getByRuc(payload.ruc);
-  }
-
-  const esNuevoProveedor = !proveedor;
-
-  if (esNuevoProveedor) {
-    proveedor = await repo.create(payload);
-
-    await bitacora.registrar(
-      {
-        usuario_id: req.usuario.id,
-        empresa_id: req.empresa_id
-      },
-      {
-        modulo: "proveedores",
-        accion: "CREATE",
-        descripcion: `Creó el proveedor ${proveedor.nombre}`,
-        data_nueva: proveedor
-      }
-    );
-  }
-
-  // ✅ siempre asegurar relación empresa–proveedor
-  await repo.ensureEmpresaProveedor(
-    proveedor.id,
-    req.empresa_id
+  await bitacora.registrar(
+    {
+      usuario_id: req.usuario.id,
+      empresa_id: req.empresa_id
+    },
+    {
+      modulo: "proveedores",
+      accion: "CREATE",
+      descripcion: `Creó el proveedor ${proveedor.nombre}`,
+      data_nueva: proveedor
+    }
   );
 
   return proveedor;
 }
-
 
 // ==========================
 // Actualizar proveedor
@@ -81,17 +69,19 @@ async function update(req, id, data) {
     throw new Error("Proveedor no encontrado");
   }
 
-  // ❌ eliminar campos que NO pertenecen al proveedor
-  const {
-    cai,
-    rango_factura_desde,
-    rango_factura_hasta,
-    fecha_limite_emision,
-    ...proveedorData
-  } = data;
+  // ✅ Validación semántica de rango
+  if (data.rango_factura_desde && data.rango_factura_hasta) {
+    const desde = normalizarRango(data.rango_factura_desde);
+    const hasta = normalizarRango(data.rango_factura_hasta);
 
+    if (desde > hasta) {
+      throw new Error("El rango de facturación es inválido");
+    }
+  }
+
+  // 🔒 CONTRATO BLINDADO
   const payload = {
-    ...proveedorData,
+    ...data,
     empresa_id: req.empresa_id
   };
 
@@ -100,7 +90,7 @@ async function update(req, id, data) {
   await bitacora.registrar(
     {
       usuario_id: req.usuario.id,
-      empresa_id: req.empresa_id
+      empresa_id: req.empresa_id  
     },
     {
       modulo: "proveedores",
@@ -142,22 +132,11 @@ async function remove(req, empresaId, id) {
   return true;
 }
 
-async function getByRuc(ruc) {
-  return repo.getByRuc(ruc);
-}
-
-async function listForUI() {
-  return repo.listForUI();
-}
-
-
 module.exports = {
   listGlobal,
   listByEmpresa,
   get,
   create,
   update,
-  remove,
-  getByRuc,
-  listForUI
+  remove
 };

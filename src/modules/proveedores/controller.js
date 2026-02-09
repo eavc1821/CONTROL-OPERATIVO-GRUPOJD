@@ -1,5 +1,4 @@
 const service = require("./service");
-const repo = require("./repository");
 
 function onlyAdmin(req, res) {
   if (!req.usuario || !["admin", "superadmin"].includes(req.usuario.rol)) {
@@ -15,31 +14,9 @@ function onlyAdmin(req, res) {
 // Listar proveedores globales (superadmin)
 async function list(req, res, next) {
   try {
-    // 🔎 NUEVO: búsqueda por RUC
-    if (req.query.ruc) {
-      const proveedor = await service.getByRuc(req.query.ruc);
-
-      if (!proveedor) {
-        return res.status(404).json({
-          ok: false,
-          message: "Proveedor no encontrado"
-        });
-      }
-
-      return res.json({
-        ok: true,
-        data: proveedor,
-        empresaContexto: {
-          id: req.empresa_id,
-          tipo: req.empresaTipo
-        }
-      });
-    }
-
-    // 🔁 comportamiento original
     const data = await service.listGlobal();
-    res.json({
-      ok: true,
+    res.json({ 
+      ok: true, 
       data,
       empresaContexto: {
         id: req.empresa_id,
@@ -50,7 +27,6 @@ async function list(req, res, next) {
     next(err);
   }
 }
-
 
 // Listar proveedores por empresa
 async function listByEmpresa(req, res, next) {
@@ -156,37 +132,11 @@ async function remove(req, res, next) {
   }
 }
 
-
-async function listForUI(req, res, next) {
-  try {
-    const data = await service.listForUI();
-    res.json({
-      ok: true,
-      data
-    });
-  } catch (err) {
-    next(err);
-  }
-}
-
-async function listSucursales(req, res, next) {
-  try {
-    const data = await repo.listSucursalesByEmpresa(req.empresa_id);
-    res.json({ ok: true, data });
-  } catch (err) {
-    next(err);
-  }
-}
-
-
-
 module.exports = {
   list,
   listByEmpresa,
   get,
   create,
   update,
-  remove,
-  listForUI,
-  listSucursales
+  remove
 };

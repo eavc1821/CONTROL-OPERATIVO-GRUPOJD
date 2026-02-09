@@ -4,18 +4,12 @@ const auth = require('../../middlewares/auth');
 const empresa = require('../../middlewares/empresa');
 const requireEmpresaAdmin = require('../../middlewares/requireEmpresaAdmin');
 const requirePermiso = require('../../middlewares/requirePermiso');
-const { validate, validatePartial } = require('../../core/validators');
+const { validate } = require('../../core/validators');
 const { createProveedorSchema, updateProveedorSchema } = require('./proveedores.schema');
 const ctrl = require('./controller');
 
 router.get('/', auth, ctrl.list);
 
-router.get(
-  "/listado",
-  auth,
-  empresa,
-  ctrl.listForUI
-);
 
 // Proveedores por empresa (para solicitudes)
 router.get(
@@ -23,14 +17,6 @@ router.get(
   auth,
   empresa,
   ctrl.listByEmpresa
-);
-
-// 🔹 TODAS LAS SUCURSALES (para solicitudes)
-router.get(
-  "/sucursales",
-  auth,
-  empresa,
-  ctrl.listSucursales
 );
 
 
