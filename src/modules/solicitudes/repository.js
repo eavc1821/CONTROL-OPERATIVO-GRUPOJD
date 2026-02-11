@@ -99,7 +99,6 @@ async function findAll(empresaId) {
       s.proveedor_nombre,
       s.proveedor_cai,
       s.categoria_nombre,
-      s.notas,
       s.total_solicitud AS total,
       s.estado,
       s.tipo_pago,
