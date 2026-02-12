@@ -37,9 +37,10 @@ function formatMoney(value) {
 
 module.exports = async function buildReporteSolicitudesData({
   empresaId,
-  periodo,
-  filtros = {}
+  filtros = {},
+  metadata = {}
 }) {
+
   /* ==========================
      1. VALIDACIONES BÁSICAS
   ========================== */
@@ -145,7 +146,7 @@ module.exports = async function buildReporteSolicitudesData({
     },
 
     metadata: {
-      periodo: periodo || "General",
+      periodo: metadata.periodoLabel || "General",
       generadoEn: new Date().toISOString(),
       filtros
     },

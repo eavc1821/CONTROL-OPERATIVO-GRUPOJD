@@ -264,11 +264,17 @@ async function proveedorPerfil(req, res, next) {
 
 async function exportDetallePDF(req, res, next) {
   try {
+    const { filtros = {}, metadata = {} } = req.body;
+
     const ctx = {
       empresaId: req.empresa_id,
       empresaIds: req.empresa_ids,
       modo: req.empresaModo || 'EMPRESA',
-      filtros: req.body
+      filtros: {
+        estado: filtros.estado || null,
+        periodo: filtros.periodo || null // ← SOLO YYYY-MM
+      },
+      metadata
     };
 
     const pdfBuffer =
@@ -285,6 +291,7 @@ async function exportDetallePDF(req, res, next) {
     next(err);
   }
 }
+
 
 
 async function reporteMensual(req, res, next) {

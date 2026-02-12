@@ -97,12 +97,12 @@
     const filtros = data.metadata.filtros || {};
     filtersDiv.innerHTML =
       "<strong>Filtros aplicados:</strong> " +
-      Object.keys(filtros).length
+      (Object.keys(filtros).length
         ? Object.entries(filtros)
             .map(([k, v]) => `<span>${k}: ${v}</span>`)
             .join("")
-        : "<span>Ninguno</span>";
-
+        : "<span>Ninguno</span>");
+    
     // KPIS
     document.getElementById("kpiTotalSolicitado").innerText = data.resumen.totalSolicitado;
     document.getElementById("kpiTotalPagado").innerText = data.resumen.totalPagado;

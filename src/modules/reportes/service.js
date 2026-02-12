@@ -195,11 +195,12 @@ exportReporteSolicitudesPDF: async (ctx) => {
     return await withTimeout(
       generarReporteSolicitudesPDF({
         empresaId: ctx.empresaId,
-        periodo: ctx.filtros?.periodo,
-        filtros: ctx.filtros
+        filtros: ctx.filtros,
+        metadata: ctx.metadata || {}
       }),
-      15000 // 15s razonable incluso para PDFs grandes
+      15000
     );
+
 
   } catch (err) {
     console.error("❌ ERROR NUEVO PDF:", err);
