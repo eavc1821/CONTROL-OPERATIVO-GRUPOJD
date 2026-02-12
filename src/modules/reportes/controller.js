@@ -266,17 +266,24 @@ async function exportDetallePDF(req, res, next) {
   try {
     const { filtros = {}, metadata = {} } = req.body;
 
-    const ctx = {
-      empresaId: req.empresa_id,
-      empresaIds: req.empresa_ids,
-      modo: req.empresaModo || 'EMPRESA',
-      filtros: {
-        estado: filtros.estado || null,
-        periodo: filtros.periodo || null // ← SOLO YYYY-MM
-      },
-      metadata
-    };
+    const filtrosNormalizados = {};
 
+      if (typeof filtros.estado === "string" && filtros.estado !== "Todos") {
+        filtrosNormalizados.estado = filtros.estado;
+      }
+
+      if (typeof filtros.periodo === "string" && filtros.periodo.trim() !== "") {
+        filtrosNormalizados.periodo = filtros.periodo;
+      }
+
+      const ctx = {
+        empresaId: req.empresa_id,
+        empresaIds: req.empresa_ids,
+        modo: req.empresaModo || "EMPRESA",
+        filtros: filtrosNormalizados,
+        metadata
+      };
+      
     const pdfBuffer =
       await service.exportReporteSolicitudesPDF(ctx);
 
