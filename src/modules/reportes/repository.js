@@ -514,8 +514,21 @@ async function getReporteSolicitudesCompleto({
   // =========================
   if (filtros?.estado && filtros.estado !== "Todos") {
     params.push(filtros.estado);
-    where.push(`s.estado = $${params.length}`);
+    where.push(`LOWER(s.estado) = LOWER($${params.length})`);
   }
+
+  // =========================
+  //VALIDACION DE FILTRO PERIODO (YYYY-MM)
+  // =========================
+
+  if (filtros?.periodo && /^\d{4}-\d{2}$/.test(filtros.periodo)) {
+    params.push(filtros.periodo);
+    where.push(`
+      date_trunc('month', s.fecha_solicitud)
+      = to_date($${params.length} || '-01', 'YYYY-MM-DD')
+  `);
+}
+
 
   // =========================
   // FILTRO PERIODO (YYYY-MM)
