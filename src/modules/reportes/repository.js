@@ -493,16 +493,33 @@ async function getReporteSolicitudesCompleto({
   empresaIds,
   filtros
 }) {
-  const params = [empresaId, empresaIds];
-  const where = [
-    `($1 = 0 OR v.empresa_id = ANY($2))`
-  ];
+  const params = [];
+  const where = [];
 
+  // =========================
+  // FILTRO EMPRESA (CLAVE)
+  // =========================
+  if (empresaId === 0) {
+    // modo admin / general → sin filtro
+  } else if (Array.isArray(empresaIds) && empresaIds.length > 0) {
+    params.push(empresaIds);
+    where.push(`v.empresa_id = ANY($${params.length})`);
+  } else {
+    params.push(empresaId);
+    where.push(`v.empresa_id = $${params.length}`);
+  }
+
+  // =========================
+  // FILTRO ESTADO
+  // =========================
   if (filtros?.estado && filtros.estado !== "Todos") {
     params.push(filtros.estado);
     where.push(`s.estado = $${params.length}`);
   }
 
+  // =========================
+  // FILTRO PERIODO (YYYY-MM)
+  // =========================
   if (filtros?.periodo) {
     params.push(filtros.periodo);
     where.push(`
@@ -511,6 +528,9 @@ async function getReporteSolicitudesCompleto({
     `);
   }
 
+  // =========================
+  // SQL FINAL
+  // =========================
   const sql = `
     SELECT
       s.correlativo,
@@ -543,7 +563,7 @@ async function getReporteSolicitudesCompleto({
     LEFT JOIN cuentas_financieras cf
       ON cf.id = pa.cuenta_financiera_id
 
-    WHERE ${where.join(" AND ")}
+    WHERE ${where.length ? where.join(" AND ") : "TRUE"}
     ORDER BY s.fecha_solicitud DESC;
   `;
 
