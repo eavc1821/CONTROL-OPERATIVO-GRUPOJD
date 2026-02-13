@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Reporte de Solicitudes</title>
-  <link rel="stylesheet" href="./styles/reporteSolicitudes.css">
+  {{STYLES}}
 </head>
 
 <body>
@@ -14,18 +14,17 @@
   <div class="header">
     <div class="header-top">
       <div>
-        <div class="empresa-nombre" id="empresaNombre"></div>
+        <div class="empresa-nombre">{{EMPRESA}}</div>
         <div class="reporte-titulo">Reporte de Solicitudes</div>
       </div>
-      <div class="header-meta" id="fechaGeneracion"></div>
+      <div class="header-meta">
+        Generado: {{GENERADO_EN}}
+      </div>
     </div>
-    <div class="header-meta" id="periodo"></div>
+    <div class="header-meta">
+      Periodo: {{PERIODO}}
+    </div>
   </div>
-
-  <!-- ==========================
-       FILTROS
-  ========================== -->
-  <div class="filters" id="filters"></div>
 
   <!-- ==========================
        KPIS
@@ -33,19 +32,19 @@
   <div class="kpis">
     <div class="kpi">
       <div class="kpi-label">Total solicitado</div>
-      <div class="kpi-value" id="kpiTotalSolicitado"></div>
+      <div class="kpi-value">{{TOTAL_SOLICITADO}}</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Total pagado</div>
-      <div class="kpi-value" id="kpiTotalPagado"></div>
+      <div class="kpi-value">{{TOTAL_PAGADO}}</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Saldo pendiente</div>
-      <div class="kpi-value" id="kpiSaldoPendiente"></div>
+      <div class="kpi-value">{{SALDO_PENDIENTE}}</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Total registros</div>
-      <div class="kpi-value" id="kpiTotalRegistros"></div>
+      <div class="kpi-value">{{TOTAL_REGISTROS}}</div>
     </div>
   </div>
 
@@ -69,7 +68,9 @@
         <th>Estado</th>
       </tr>
     </thead>
-    <tbody id="tableBody"></tbody>
+    <tbody>
+      {{ROWS}}
+    </tbody>
   </table>
 
   <!-- ==========================
@@ -78,59 +79,6 @@
   <div class="footer">
     Documento generado automáticamente por el sistema
   </div>
-
-  <!-- ==========================
-       SCRIPT DE INYECCIÓN
-  ========================== -->
-  <script>
-    const data = window.__DATA__;
-
-    // HEADER
-    document.getElementById("empresaNombre").innerText = data.empresa.nombre;
-    document.getElementById("periodo").innerText =
-      "Periodo: " + (data.metadata.periodo || "General");
-    document.getElementById("fechaGeneracion").innerText =
-      "Generado: " + new Date(data.metadata.generadoEn).toLocaleString("es-HN");
-
-    // FILTROS
-    const filtersDiv = document.getElementById("filters");
-    const filtros = data.metadata.filtros || {};
-    filtersDiv.innerHTML =
-      "<strong>Filtros aplicados:</strong> " +
-      (Object.keys(filtros).length
-        ? Object.entries(filtros)
-            .map(([k, v]) => `<span>${k}: ${v}</span>`)
-            .join("")
-        : "<span>Ninguno</span>");
-    
-    // KPIS
-    document.getElementById("kpiTotalSolicitado").innerText = data.resumen.totalSolicitado;
-    document.getElementById("kpiTotalPagado").innerText = data.resumen.totalPagado;
-    document.getElementById("kpiSaldoPendiente").innerText = data.resumen.saldoPendiente;
-    document.getElementById("kpiTotalRegistros").innerText = data.resumen.totalRegistros;
-
-    // TABLA
-    const tbody = document.getElementById("tableBody");
-
-    data.detalle.forEach(r => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${r.correlativo}</td>
-        <td>${r.proveedor}</td>
-        <td>${r.fecha_solicitud}</td>
-        <td>${r.fecha_factura}</td>
-        <td>${r.numero_factura}</td>
-        <td>${r.tipo_pago}</td>
-        <td>${r.banco}</td>
-        <td>${r.cuenta}</td>
-        <td class="numeric">${r.total}</td>
-        <td class="numeric">${r.pagado}</td>
-        <td class="numeric">${r.saldo}</td>
-        <td>${r.estado}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  </script>
 
 </body>
 </html>
