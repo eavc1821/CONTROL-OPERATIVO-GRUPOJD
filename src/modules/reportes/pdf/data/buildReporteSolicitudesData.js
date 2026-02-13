@@ -37,6 +37,7 @@ function formatMoney(value) {
 
 module.exports = async function buildReporteSolicitudesData({
   empresaId,
+  empresaIds = [],
   filtros = {},
   metadata = {}
 }) {
@@ -62,11 +63,25 @@ module.exports = async function buildReporteSolicitudesData({
    *
    * Por ahora se asume que rows existe.
    */
+
+
+  const filtrosNormalizados = {};
+
+if (typeof filtros.estado === "string") {
+  filtrosNormalizados.estado = filtros.estado;
+}
+
+if (typeof filtros.periodo === "string") {
+  filtrosNormalizados.periodo = filtros.periodo; // YYYY-MM
+}
+
+
   const rows = await repo.getReporteSolicitudesCompleto({
   empresaId,
-  empresaIds: [],
-  filtros
+  empresaIds,
+  filtros: filtrosNormalizados
 });
+
 
   /* ==========================
      3. APLICACIÓN DE FILTROS
