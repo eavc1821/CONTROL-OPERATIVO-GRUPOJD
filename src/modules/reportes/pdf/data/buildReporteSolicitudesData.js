@@ -155,8 +155,8 @@ if (typeof filtros.periodo === "string") {
 
   return {
     empresa: {
-      // ⚠️ luego esto debe venir de BD o contexto
-      nombre: "Empresa XYZ",
+      nombre: metadata.empresaNombre || "—",
+      codigo: metadata.empresaCodigo || null,
       logo: null
     },
 

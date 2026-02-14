@@ -35,6 +35,25 @@ module.exports = function renderTemplate(data) {
   );
 
   /* ==========================
+      HEADER EXTENDIDO
+    ========================== */
+
+    html = html.replaceAll(
+      "{{GENERADO_POR}}",
+      data.metadata?.generadoPor || "Sistema"
+    );
+
+    const filtros = data.metadata?.filtros || {};
+    const filtrosTexto = Object.keys(filtros).length
+      ? Object.entries(filtros)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(" | ")
+      : "Ninguno";
+
+    html = html.replaceAll("{{FILTROS_APLICADOS}}", filtrosTexto);
+
+
+  /* ==========================
      RESUMEN
   ========================== */
   html = html.replaceAll(
