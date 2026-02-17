@@ -213,41 +213,58 @@ exportReporteSolicitudesPDF: async (ctx) => {
 getReporteMensual: async (ctx, periodo) => {
   assertCtx(ctx);
 
-  const { empresaId, empresaIds, modo } = ctx;
+  const { empresaId } = ctx;
 
-  // Reutilizamos lógica completa del dashboard
-  const dashboard = await module.exports.getDashboard(ctx);
+  // 1️⃣ Obtener KPIs del mes
+  const kpiQuery = `
+    SELECT
+      COALESCE(SUM(v.total_solicitud), 0) AS total_solicitado,
+      COALESCE(SUM(v.total_pagado), 0) AS total_pagado,
+      COALESCE(SUM(v.saldo_restante), 0) AS saldo_pendiente,
+      COUNT(*) AS total_solicitudes
+    FROM vw_total_pagado_por_solicitud v
+    JOIN solicitudes s ON s.id = v.solicitud_id
+    WHERE ($1 = 0 OR v.empresa_id = $1)
+      AND date_trunc('month', s.fecha_solicitud)
+          = to_date($2 || '-01', 'YYYY-MM-DD');
+  `;
 
-  // Filtrar monthly por periodo
-  const monthly = (dashboard.monthly || []).filter(
-    m => m.periodo === periodo
-  );
+  const { rows: kpiRows } = await require('../../core/db').query(kpiQuery, [empresaId, periodo]);
+  const kpisRaw = kpiRows[0] || {};
 
-  // Filtrar detalle por periodo
-  const detalle = (dashboard.detalle || []).filter(d => {
-  if (!d.fecha_solicitud) return false;
+  const kpis = {
+    total_solicitado: Number(kpisRaw.total_solicitado || 0),
+    total_pagado: Number(kpisRaw.total_pagado || 0),
+    saldo_pendiente: Number(kpisRaw.saldo_pendiente || 0),
+    total_solicitudes: Number(kpisRaw.total_solicitudes || 0),
+  };
 
-  const fecha = new Date(d.fecha_solicitud);
-  const year = fecha.getFullYear();
-  const month = String(fecha.getMonth() + 1).padStart(2, "0");
+  // 2️⃣ Obtener detalle del mes
+  const detalle = await repo.getDashboardPorMes(empresaId, periodo);
 
-  const periodoItem = `${year}-${month}`;
+  // 3️⃣ Calcular estados dinámicamente del mes
+  const stateMap = {};
+  detalle.forEach(d => {
+    const estado = d.estado || "desconocido";
+    stateMap[estado] = (stateMap[estado] || 0) + 1;
+  });
 
-  return periodoItem === periodo;
-});
+  const states = Object.keys(stateMap).map(estado => ({
+    estado,
+    cnt: stateMap[estado]
+  }));
 
-
+  // 4️⃣ Retornar estructura consistente con dashboard
   return {
-    kpis: dashboard.kpis,
-    monthly,
-    providers: dashboard.providers || [],
-    paymentTypes: dashboard.paymentTypes || [],
-    states: dashboard.states || [],
-    cashflow: dashboard.cashflow || [],
-    detalle
+    kpis,
+    monthly: [],          // no aplica en vista mensual
+    providers: [],        // opcional: puedes calcular si lo necesitas
+    paymentTypes: [],
+    states,
+    cashflow: [],
+    detalle: detalle || []
   };
 },
-
 
 
 
