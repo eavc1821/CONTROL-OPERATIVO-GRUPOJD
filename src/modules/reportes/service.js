@@ -225,9 +225,17 @@ getReporteMensual: async (ctx, periodo) => {
 
   // Filtrar detalle por periodo
   const detalle = (dashboard.detalle || []).filter(d => {
-    if (!d.fecha_solicitud) return false;
-    return d.fecha_solicitud.startsWith(periodo);
-  });
+  if (!d.fecha_solicitud) return false;
+
+  const fecha = new Date(d.fecha_solicitud);
+  const year = fecha.getFullYear();
+  const month = String(fecha.getMonth() + 1).padStart(2, "0");
+
+  const periodoItem = `${year}-${month}`;
+
+  return periodoItem === periodo;
+});
+
 
   return {
     kpis: dashboard.kpis,
