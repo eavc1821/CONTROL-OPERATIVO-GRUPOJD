@@ -533,13 +533,13 @@ async function getReporteSolicitudesCompleto({
   // =========================
   // FILTRO PERIODO (YYYY-MM)
   // =========================
-  if (filtros?.periodo) {
-    params.push(filtros.periodo);
-    where.push(`
-      date_trunc('month', s.fecha_solicitud)
-      = to_date($${params.length} || '-01', 'YYYY-MM-DD')
-    `);
-  }
+  // if (filtros?.periodo) {
+  //   params.push(filtros.periodo);
+  //   where.push(`
+  //     date_trunc('month', s.fecha_solicitud)
+  //     = to_date($${params.length} || '-01', 'YYYY-MM-DD')
+  //   `);
+  // }
 
   // =========================
   // SQL FINAL

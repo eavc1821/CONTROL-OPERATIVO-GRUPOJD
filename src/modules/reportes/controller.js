@@ -322,6 +322,11 @@ async function reporteMensual(req, res, next) {
           saldo_pendiente: 0,
           total_solicitudes: 0
         },
+        monthly: data.monthly || [],
+        providers: data.providers || [],
+        paymentTypes: data.paymentTypes || [],
+        states: data.states || [],
+        cashflow: data.cashflow || [],
         detalle: data.detalle || []
       },
       empresaContexto: {
@@ -333,6 +338,8 @@ async function reporteMensual(req, res, next) {
     next(err);
   }
 }
+
+
 
 module.exports = {
   resumen,

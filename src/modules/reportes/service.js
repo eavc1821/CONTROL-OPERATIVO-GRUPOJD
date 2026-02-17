@@ -206,7 +206,41 @@ exportReporteSolicitudesPDF: async (ctx) => {
     console.error("❌ ERROR NUEVO PDF:", err);
     throw err;
   }
-}
+},
+
+
+
+getReporteMensual: async (ctx, periodo) => {
+  assertCtx(ctx);
+
+  const { empresaId, empresaIds, modo } = ctx;
+
+  // Reutilizamos lógica completa del dashboard
+  const dashboard = await module.exports.getDashboard(ctx);
+
+  // Filtrar monthly por periodo
+  const monthly = (dashboard.monthly || []).filter(
+    m => m.periodo === periodo
+  );
+
+  // Filtrar detalle por periodo
+  const detalle = (dashboard.detalle || []).filter(d => {
+    if (!d.fecha_solicitud) return false;
+    return d.fecha_solicitud.startsWith(periodo);
+  });
+
+  return {
+    kpis: dashboard.kpis,
+    monthly,
+    providers: dashboard.providers || [],
+    paymentTypes: dashboard.paymentTypes || [],
+    states: dashboard.states || [],
+    cashflow: dashboard.cashflow || [],
+    detalle
+  };
+},
+
+
 
 
 };
