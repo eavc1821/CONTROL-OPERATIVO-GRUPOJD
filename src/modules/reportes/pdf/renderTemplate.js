@@ -72,7 +72,7 @@ module.exports = function renderTemplate(data) {
     "{{TOTAL_REGISTROS}}",
     String(data.resumen?.totalRegistros ?? 0)
   );
-
+ 
   /* ==========================
      TABLA DETALLE
   ========================== */
