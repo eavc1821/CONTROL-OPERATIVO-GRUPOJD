@@ -137,24 +137,50 @@ async function getDashboardPorMes(empresaId, periodo) {
       s.correlativo,
       p.nombre AS proveedor,
       s.tipo_pago,
+
       v.total_solicitud,
       v.total_pagado,
       v.saldo_restante AS saldo,
+
       s.estado,
       s.fecha_solicitud,
+
       v.numero_factura,
-      v.fecha_factura
+      v.fecha_factura,
+
+      cf.banco,
+      cf.numero_cuenta
+
     FROM vw_total_pagado_por_solicitud v
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    JOIN proveedores p ON p.id = v.proveedor_id
+
+    JOIN solicitudes s
+      ON s.id = v.solicitud_id
+
+    JOIN proveedores p
+      ON p.id = v.proveedor_id
+
+    LEFT JOIN LATERAL (
+      SELECT pa.cuenta_financiera_id
+      FROM pagos pa
+      WHERE pa.solicitud_id = s.id
+        AND pa.empresa_id   = s.empresa_id
+      ORDER BY pa.fecha_pago DESC, pa.created_at DESC
+      LIMIT 1
+    ) ultimo_pago ON true
+
+    LEFT JOIN cuentas_financieras cf
+      ON cf.id = ultimo_pago.cuenta_financiera_id
+
     WHERE ($1 = 0 OR v.empresa_id = $1)
       AND date_trunc('month', s.fecha_solicitud)
           = to_date($2 || '-01', 'YYYY-MM-DD')
+
     ORDER BY s.fecha_solicitud DESC;
   `, [empresaId, periodo]);
 
   return rows;
 }
+
 
 
 async function getProveedoresReporte({ empresaId, empresaIds, filtros }) {
@@ -583,7 +609,6 @@ async function getReporteSolicitudesCompleto({
   const { rows } = await pool.query(sql, params);
   return rows;
 }
-
 
 
 module.exports = {
