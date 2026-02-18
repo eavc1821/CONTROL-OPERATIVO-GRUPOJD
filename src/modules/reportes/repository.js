@@ -466,7 +466,6 @@ async function getReporteMensual(empresaId, periodo) {
   console.log("empresaId:", empresaId);
   console.log("periodo:", periodo);
 
-
   // =========================
   // 1️⃣ KPIs DEL MES
   // =========================
@@ -493,6 +492,8 @@ async function getReporteMensual(empresaId, periodo) {
     total_solicitudes: Number(kpisRaw.total_solicitudes || 0),
   };
 
+  console.log("kpis:", kpis);
+
   // =========================
   // 2️⃣ DETALLE CON BANCO
   // =========================
@@ -503,21 +504,16 @@ async function getReporteMensual(empresaId, periodo) {
       s.tipo_pago,
       s.estado,
       s.fecha_solicitud,
-
       v.total_solicitud,
       v.total_pagado,
       v.saldo_restante AS saldo,
-
       v.numero_factura,
       v.fecha_factura,
-
       cf.banco,
       cf.numero_cuenta
-
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
     JOIN proveedores p ON p.id = v.proveedor_id
-
     LEFT JOIN LATERAL (
       SELECT pa.cuenta_financiera_id
       FROM pagos pa
@@ -526,18 +522,16 @@ async function getReporteMensual(empresaId, periodo) {
       ORDER BY pa.fecha_pago DESC, pa.created_at DESC
       LIMIT 1
     ) ultimo_pago ON true
-
     LEFT JOIN cuentas_financieras cf
       ON cf.id = ultimo_pago.cuenta_financiera_id
-
     WHERE ($1 = 0 OR v.empresa_id = $1)
       AND date_trunc('month', s.fecha_solicitud)
           = to_date($2 || '-01', 'YYYY-MM-DD')
-
     ORDER BY s.fecha_solicitud DESC;
   `;
 
   const { rows: detalle } = await pool.query(detalleQuery, params);
+  console.log("detalle rows:", detalle.length);
 
   // =========================
   // 3️⃣ TOP PROVEEDORES DEL MES
@@ -557,12 +551,8 @@ async function getReporteMensual(empresaId, periodo) {
     LIMIT 10;
   `;
 
-  console.log("providers rows:", providers.length);
-  console.log("paymentTypes rows:", paymentTypes.length);
-  console.log("cashflow rows:", cashflow.length);
-
-
   const { rows: providers } = await pool.query(providersQuery, params);
+  console.log("providers rows:", providers.length);
 
   // =========================
   // 4️⃣ TOTALES POR TIPO DE PAGO (MES)
@@ -581,11 +571,8 @@ async function getReporteMensual(empresaId, periodo) {
     ORDER BY s.tipo_pago;
   `;
 
-  console.log("providers rows:", providers.length);
-  console.log("paymentTypes rows:", paymentTypes.length);
-  console.log("cashflow rows:", cashflow.length);
-
   const { rows: paymentTypes } = await pool.query(tipoPagoQuery, params);
+  console.log("paymentTypes rows:", paymentTypes.length);
 
   // =========================
   // 5️⃣ ESTADOS DEL MES
@@ -602,6 +589,7 @@ async function getReporteMensual(empresaId, periodo) {
   `;
 
   const { rows: states } = await pool.query(stateQuery, params);
+  console.log("states rows:", states.length);
 
   // =========================
   // 6️⃣ CASHFLOW DIARIO DEL MES
@@ -621,13 +609,13 @@ async function getReporteMensual(empresaId, periodo) {
   `;
 
   const { rows: cashflow } = await pool.query(cashflowQuery, params);
+  console.log("cashflow rows:", cashflow.length);
 
-  // =========================
-  // 7️⃣ RESPUESTA FINAL
-  // =========================
+  console.log("=== FIN DEBUG REPORTE MENSUAL ===");
+
   return {
     kpis,
-    monthly: [], // no aplica dentro de una vista mensual específica
+    monthly: [],
     providers,
     paymentTypes,
     states,
@@ -635,6 +623,7 @@ async function getReporteMensual(empresaId, periodo) {
     detalle
   };
 }
+
 
 
 
