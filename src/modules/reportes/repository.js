@@ -462,6 +462,11 @@ async function getResumenPorEmpresa(empresaIds = []) {
 async function getReporteMensual(empresaId, periodo) {
   const params = [empresaId, periodo];
 
+  console.log("=== DEBUG REPORTE MENSUAL ===");
+  console.log("empresaId:", empresaId);
+  console.log("periodo:", periodo);
+
+
   // =========================
   // 1️⃣ KPIs DEL MES
   // =========================
@@ -552,6 +557,11 @@ async function getReporteMensual(empresaId, periodo) {
     LIMIT 10;
   `;
 
+  console.log("providers rows:", providers.length);
+  console.log("paymentTypes rows:", paymentTypes.length);
+  console.log("cashflow rows:", cashflow.length);
+
+
   const { rows: providers } = await pool.query(providersQuery, params);
 
   // =========================
@@ -570,6 +580,10 @@ async function getReporteMensual(empresaId, periodo) {
     GROUP BY s.tipo_pago
     ORDER BY s.tipo_pago;
   `;
+
+  console.log("providers rows:", providers.length);
+  console.log("paymentTypes rows:", paymentTypes.length);
+  console.log("cashflow rows:", cashflow.length);
 
   const { rows: paymentTypes } = await pool.query(tipoPagoQuery, params);
 
