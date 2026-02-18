@@ -460,7 +460,11 @@ async function getResumenPorEmpresa(empresaIds = []) {
 }
 
 async function getReporteMensual(empresaId, periodo) {
-  // 1️⃣ KPIs del mes
+  const params = [empresaId, periodo];
+
+  // =========================
+  // 1️⃣ KPIs DEL MES
+  // =========================
   const kpiQuery = `
     SELECT
       COALESCE(SUM(v.total_solicitud), 0) AS total_solicitado,
@@ -474,44 +478,150 @@ async function getReporteMensual(empresaId, periodo) {
           = to_date($2 || '-01', 'YYYY-MM-DD');
   `;
 
-  const { rows: kpiRows } = await pool.query(kpiQuery, [empresaId, periodo]);
-  const kpis = kpiRows[0];
+  const { rows: kpiRows } = await pool.query(kpiQuery, params);
+  const kpisRaw = kpiRows[0] || {};
 
-  // 2️⃣ Detalle del mes
+  const kpis = {
+    total_solicitado: Number(kpisRaw.total_solicitado || 0),
+    total_pagado: Number(kpisRaw.total_pagado || 0),
+    saldo_pendiente: Number(kpisRaw.saldo_pendiente || 0),
+    total_solicitudes: Number(kpisRaw.total_solicitudes || 0),
+  };
+
+  // =========================
+  // 2️⃣ DETALLE CON BANCO
+  // =========================
   const detalleQuery = `
     SELECT
-      v.solicitud_id,
       s.correlativo,
       p.nombre AS proveedor,
       s.tipo_pago,
+      s.estado,
+      s.fecha_solicitud,
+
       v.total_solicitud,
       v.total_pagado,
       v.saldo_restante AS saldo,
-      s.estado,
-      s.fecha_solicitud,
+
       v.numero_factura,
-      v.fecha_factura
+      v.fecha_factura,
+
+      cf.banco,
+      cf.numero_cuenta
+
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
     JOIN proveedores p ON p.id = v.proveedor_id
+
+    LEFT JOIN LATERAL (
+      SELECT pa.cuenta_financiera_id
+      FROM pagos pa
+      WHERE pa.solicitud_id = s.id
+        AND pa.empresa_id = s.empresa_id
+      ORDER BY pa.fecha_pago DESC, pa.created_at DESC
+      LIMIT 1
+    ) ultimo_pago ON true
+
+    LEFT JOIN cuentas_financieras cf
+      ON cf.id = ultimo_pago.cuenta_financiera_id
+
     WHERE ($1 = 0 OR v.empresa_id = $1)
       AND date_trunc('month', s.fecha_solicitud)
           = to_date($2 || '-01', 'YYYY-MM-DD')
+
     ORDER BY s.fecha_solicitud DESC;
   `;
 
-  const { rows: detalle } = await pool.query(detalleQuery, [empresaId, periodo]);
+  const { rows: detalle } = await pool.query(detalleQuery, params);
 
+  // =========================
+  // 3️⃣ TOP PROVEEDORES DEL MES
+  // =========================
+  const providersQuery = `
+    SELECT
+      p.nombre AS proveedor,
+      SUM(v.total_solicitud) AS total_compras
+    FROM vw_total_pagado_por_solicitud v
+    JOIN proveedores p ON p.id = v.proveedor_id
+    JOIN solicitudes s ON s.id = v.solicitud_id
+    WHERE ($1 = 0 OR v.empresa_id = $1)
+      AND date_trunc('month', s.fecha_solicitud)
+          = to_date($2 || '-01', 'YYYY-MM-DD')
+    GROUP BY p.nombre
+    ORDER BY total_compras DESC
+    LIMIT 10;
+  `;
+
+  const { rows: providers } = await pool.query(providersQuery, params);
+
+  // =========================
+  // 4️⃣ TOTALES POR TIPO DE PAGO (MES)
+  // =========================
+  const tipoPagoQuery = `
+    SELECT
+      s.tipo_pago,
+      SUM(v.total_solicitud) AS total_solicitado,
+      SUM(v.total_pagado) AS total_pagado
+    FROM vw_total_pagado_por_solicitud v
+    JOIN solicitudes s ON s.id = v.solicitud_id
+    WHERE ($1 = 0 OR v.empresa_id = $1)
+      AND date_trunc('month', s.fecha_solicitud)
+          = to_date($2 || '-01', 'YYYY-MM-DD')
+    GROUP BY s.tipo_pago
+    ORDER BY s.tipo_pago;
+  `;
+
+  const { rows: paymentTypes } = await pool.query(tipoPagoQuery, params);
+
+  // =========================
+  // 5️⃣ ESTADOS DEL MES
+  // =========================
+  const stateQuery = `
+    SELECT
+      s.estado,
+      COUNT(*) AS cnt
+    FROM solicitudes s
+    WHERE ($1 = 0 OR s.empresa_id = $1)
+      AND date_trunc('month', s.fecha_solicitud)
+          = to_date($2 || '-01', 'YYYY-MM-DD')
+    GROUP BY s.estado;
+  `;
+
+  const { rows: states } = await pool.query(stateQuery, params);
+
+  // =========================
+  // 6️⃣ CASHFLOW DIARIO DEL MES
+  // =========================
+  const cashflowQuery = `
+    SELECT
+      s.fecha_solicitud AS fecha,
+      SUM(v.total_solicitud) AS total_solicitud,
+      SUM(v.total_pagado) AS total_pagado
+    FROM vw_total_pagado_por_solicitud v
+    JOIN solicitudes s ON s.id = v.solicitud_id
+    WHERE ($1 = 0 OR v.empresa_id = $1)
+      AND date_trunc('month', s.fecha_solicitud)
+          = to_date($2 || '-01', 'YYYY-MM-DD')
+    GROUP BY s.fecha_solicitud
+    ORDER BY s.fecha_solicitud;
+  `;
+
+  const { rows: cashflow } = await pool.query(cashflowQuery, params);
+
+  // =========================
+  // 7️⃣ RESPUESTA FINAL
+  // =========================
   return {
-    kpis: {
-      total_solicitado: Number(kpis.total_solicitado || 0),
-      total_pagado: Number(kpis.total_pagado || 0),
-      saldo_pendiente: Number(kpis.saldo_pendiente || 0),
-      total_solicitudes: Number(kpis.total_solicitudes || 0),
-    },
-    detalle,
+    kpis,
+    monthly: [], // no aplica dentro de una vista mensual específica
+    providers,
+    paymentTypes,
+    states,
+    cashflow,
+    detalle
   };
 }
+
 
 
 async function getReporteSolicitudesCompleto({
