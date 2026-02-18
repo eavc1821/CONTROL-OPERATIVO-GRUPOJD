@@ -37,7 +37,9 @@ router.get("/proveedores", auth, empresa, ctrl.proveedoresReporte);
 // GET /reportes/proveedor/:id
 router.get("/proveedores/:id/perfil", auth, empresa, ctrl.proveedorPerfil);
 
-router.get("/mensual/:periodo", auth, empresa, ctrl.reporteMensual);
+// router.get("/mensual/:periodo", auth, empresa, ctrl.reporteMensual);
+router.get("/rango", auth, empresa, ctrl.reporteRango);
+
 
 
 module.exports = router;
