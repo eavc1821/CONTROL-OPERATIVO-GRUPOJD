@@ -262,45 +262,6 @@ async function proveedorPerfil(req, res, next) {
   }
 }
 
-async function exportDetallePDF(req, res, next) {
-  try {
-    const { filtros = {}, metadata = {} } = req.body;
-
-    const filtrosNormalizados = {};
-
-      if (typeof filtros.estado === "string" && filtros.estado !== "Todos") {
-        filtrosNormalizados.estado = filtros.estado;
-      }
-
-      if (typeof filtros.periodo === "string" && filtros.periodo.trim() !== "") {
-        filtrosNormalizados.periodo = filtros.periodo;
-      }
-
-      const ctx = {
-        empresaId: req.empresa_id,
-        empresaIds: req.empresa_ids,
-        modo: req.empresaModo || "EMPRESA",
-        filtros: filtrosNormalizados,
-        metadata
-      };
-      
-    const pdfBuffer =
-      await service.exportReporteSolicitudesPDF(ctx);
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=reporte_solicitudes.pdf"
-    );
-
-    res.send(pdfBuffer);
-  } catch (err) {
-    next(err);
-  }
-}
-
-
-
 async function reporteMensual(req, res, next) {
   try {
     const { periodo } = req.params;
@@ -339,8 +300,6 @@ async function reporteMensual(req, res, next) {
   }
 }
 
-
-
 module.exports = {
   resumen,
   totalesProveedor,
@@ -353,6 +312,5 @@ module.exports = {
   dashboardPorMes,
   proveedoresReporte,
   proveedorPerfil,
-  exportDetallePDF,
   reporteMensual
 };

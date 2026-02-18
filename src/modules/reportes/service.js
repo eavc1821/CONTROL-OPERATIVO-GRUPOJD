@@ -1,13 +1,5 @@
 const repo = require('./repository');
 const assertCtx = require('../../utils/assertReporteCtx');
-const PdfPrinter = require("pdfmake");
-const fonts = {
-  Helvetica: {
-    normal: "Helvetica",
-    bold: "Helvetica-Bold"
-  }
-};
-
 
 module.exports = {
 
