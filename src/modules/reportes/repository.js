@@ -462,11 +462,7 @@ async function getResumenPorEmpresa(empresaIds = []) {
 async function getReporteMensual(empresaId, periodo) {
   const params = [empresaId, periodo];
 
-  console.log("=== DEBUG REPORTE MENSUAL ===");
-  console.log("empresaId:", empresaId);
-  console.log("periodo:", periodo);
-
-  // =========================
+    // =========================
   // 1️⃣ KPIs DEL MES
   // =========================
   const kpiQuery = `
@@ -491,8 +487,6 @@ async function getReporteMensual(empresaId, periodo) {
     saldo_pendiente: Number(kpisRaw.saldo_pendiente || 0),
     total_solicitudes: Number(kpisRaw.total_solicitudes || 0),
   };
-
-  console.log("kpis:", kpis);
 
   // =========================
   // 2️⃣ DETALLE CON BANCO
@@ -531,7 +525,6 @@ async function getReporteMensual(empresaId, periodo) {
   `;
 
   const { rows: detalle } = await pool.query(detalleQuery, params);
-  console.log("detalle rows:", detalle.length);
 
   // =========================
   // 3️⃣ TOP PROVEEDORES DEL MES
@@ -552,7 +545,6 @@ async function getReporteMensual(empresaId, periodo) {
   `;
 
   const { rows: providers } = await pool.query(providersQuery, params);
-  console.log("providers rows:", providers.length);
 
   // =========================
   // 4️⃣ TOTALES POR TIPO DE PAGO (MES)
@@ -572,7 +564,6 @@ async function getReporteMensual(empresaId, periodo) {
   `;
 
   const { rows: paymentTypes } = await pool.query(tipoPagoQuery, params);
-  console.log("paymentTypes rows:", paymentTypes.length);
 
   // =========================
   // 5️⃣ ESTADOS DEL MES
@@ -589,7 +580,6 @@ async function getReporteMensual(empresaId, periodo) {
   `;
 
   const { rows: states } = await pool.query(stateQuery, params);
-  console.log("states rows:", states.length);
 
   // =========================
   // 6️⃣ CASHFLOW DIARIO DEL MES
@@ -609,9 +599,6 @@ async function getReporteMensual(empresaId, periodo) {
   `;
 
   const { rows: cashflow } = await pool.query(cashflowQuery, params);
-  console.log("cashflow rows:", cashflow.length);
-
-  console.log("=== FIN DEBUG REPORTE MENSUAL ===");
 
   return {
     kpis,
