@@ -262,17 +262,26 @@ async function proveedorPerfil(req, res, next) {
   }
 }
 
-async function reporteMensual(req, res, next) {
+async function reporteRango(req, res, next) {
   try {
-    const { periodo } = req.params;
+    const { desde, hasta } = req.query;
+
+    if (!desde || !hasta) {
+      return res.status(400).json({
+        ok: false,
+        message: "Debe enviar 'desde' y 'hasta' en formato YYYY-MM-DD"
+      });
+    }
 
     const ctx = {
       empresaId: req.empresa_id,
       empresaIds: req.empresa_ids,
-      modo: req.empresaModo || 'EMPRESA'
+      modo: req.empresaModo || 'EMPRESA',
+      desde,
+      hasta
     };
 
-    const data = await service.getReporteMensual(ctx, periodo);
+    const data = await service.getReporteRango(ctx);
 
     res.json({
       ok: true,
@@ -283,7 +292,6 @@ async function reporteMensual(req, res, next) {
           saldo_pendiente: 0,
           total_solicitudes: 0
         },
-        monthly: data.monthly || [],
         providers: data.providers || [],
         paymentTypes: data.paymentTypes || [],
         states: data.states || [],
@@ -300,6 +308,7 @@ async function reporteMensual(req, res, next) {
   }
 }
 
+
 module.exports = {
   resumen,
   totalesProveedor,
@@ -312,5 +321,5 @@ module.exports = {
   dashboardPorMes,
   proveedoresReporte,
   proveedorPerfil,
-  reporteMensual
+  reporteRango
 };

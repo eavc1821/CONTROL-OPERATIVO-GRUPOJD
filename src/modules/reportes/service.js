@@ -202,12 +202,22 @@ exportReporteSolicitudesPDF: async (ctx) => {
 
 
 
-getReporteMensual: async (ctx, periodo) => {
+getReporteRango: async (ctx) => {
   assertCtx(ctx);
-  return await repo.getReporteMensual(ctx.empresaId, periodo);
+
+  const { empresaId, empresaIds, desde, hasta } = ctx;
+
+  if (!desde || !hasta) {
+    throw new Error("Rango de fechas inválido");
+  }
+
+  return await repo.getReporteRango({
+    empresaId,
+    empresaIds,
+    desde,
+    hasta
+  });
 },
-
-
 
 
 };

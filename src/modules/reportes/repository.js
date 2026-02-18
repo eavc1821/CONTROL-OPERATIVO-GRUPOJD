@@ -459,11 +459,21 @@ async function getResumenPorEmpresa(empresaIds = []) {
   return rows;
 }
 
-async function getReporteMensual(empresaId, periodo) {
-  const params = [empresaId, periodo];
+async function getReporteRango({ empresaId, empresaIds = [], desde, hasta }) {
 
-    // =========================
-  // 1️⃣ KPIs DEL MES
+  if (!desde || !hasta) {
+    throw new Error("Rango de fechas requerido");
+  }
+
+  const params = [empresaId, desde, hasta];
+
+  const empresaFilter =
+    empresaId === 0
+      ? `v.empresa_id = ANY($4)`
+      : `v.empresa_id = $1`;
+
+  // =========================
+  // 1️⃣ KPIs
   // =========================
   const kpiQuery = `
     SELECT
@@ -473,12 +483,19 @@ async function getReporteMensual(empresaId, periodo) {
       COUNT(*) AS total_solicitudes
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
-    WHERE ($1 = 0 OR v.empresa_id = $1)
-      AND date_trunc('month', s.fecha_solicitud)
-          = to_date($2 || '-01', 'YYYY-MM-DD');
+    WHERE ${empresaFilter}
+      AND s.fecha_solicitud BETWEEN $2 AND $3;
   `;
 
-  const { rows: kpiRows } = await pool.query(kpiQuery, params);
+  const { rows: kpiRows } = await pool.query(
+    empresaId === 0
+      ? kpiQuery.replace("$4", "$4")
+      : kpiQuery,
+    empresaId === 0
+      ? [empresaId, desde, hasta, empresaIds]
+      : params
+  );
+
   const kpisRaw = kpiRows[0] || {};
 
   const kpis = {
@@ -489,7 +506,7 @@ async function getReporteMensual(empresaId, periodo) {
   };
 
   // =========================
-  // 2️⃣ DETALLE CON BANCO
+  // 2️⃣ DETALLE
   // =========================
   const detalleQuery = `
     SELECT
@@ -518,16 +535,22 @@ async function getReporteMensual(empresaId, periodo) {
     ) ultimo_pago ON true
     LEFT JOIN cuentas_financieras cf
       ON cf.id = ultimo_pago.cuenta_financiera_id
-    WHERE ($1 = 0 OR v.empresa_id = $1)
-      AND date_trunc('month', s.fecha_solicitud)
-          = to_date($2 || '-01', 'YYYY-MM-DD')
+    WHERE ${empresaFilter}
+      AND s.fecha_solicitud BETWEEN $2 AND $3
     ORDER BY s.fecha_solicitud DESC;
   `;
 
-  const { rows: detalle } = await pool.query(detalleQuery, params);
+  const { rows: detalle } = await pool.query(
+    empresaId === 0
+      ? detalleQuery.replace("$4", "$4")
+      : detalleQuery,
+    empresaId === 0
+      ? [empresaId, desde, hasta, empresaIds]
+      : params
+  );
 
   // =========================
-  // 3️⃣ TOP PROVEEDORES DEL MES
+  // 3️⃣ TOP PROVEEDORES
   // =========================
   const providersQuery = `
     SELECT
@@ -536,18 +559,24 @@ async function getReporteMensual(empresaId, periodo) {
     FROM vw_total_pagado_por_solicitud v
     JOIN proveedores p ON p.id = v.proveedor_id
     JOIN solicitudes s ON s.id = v.solicitud_id
-    WHERE ($1 = 0 OR v.empresa_id = $1)
-      AND date_trunc('month', s.fecha_solicitud)
-          = to_date($2 || '-01', 'YYYY-MM-DD')
+    WHERE ${empresaFilter}
+      AND s.fecha_solicitud BETWEEN $2 AND $3
     GROUP BY p.nombre
     ORDER BY total_compras DESC
     LIMIT 10;
   `;
 
-  const { rows: providers } = await pool.query(providersQuery, params);
+  const { rows: providers } = await pool.query(
+    empresaId === 0
+      ? providersQuery.replace("$4", "$4")
+      : providersQuery,
+    empresaId === 0
+      ? [empresaId, desde, hasta, empresaIds]
+      : params
+  );
 
   // =========================
-  // 4️⃣ TOTALES POR TIPO DE PAGO (MES)
+  // 4️⃣ TIPO DE PAGO
   // =========================
   const tipoPagoQuery = `
     SELECT
@@ -556,33 +585,45 @@ async function getReporteMensual(empresaId, periodo) {
       SUM(v.total_pagado) AS total_pagado
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
-    WHERE ($1 = 0 OR v.empresa_id = $1)
-      AND date_trunc('month', s.fecha_solicitud)
-          = to_date($2 || '-01', 'YYYY-MM-DD')
+    WHERE ${empresaFilter}
+      AND s.fecha_solicitud BETWEEN $2 AND $3
     GROUP BY s.tipo_pago
     ORDER BY s.tipo_pago;
   `;
 
-  const { rows: paymentTypes } = await pool.query(tipoPagoQuery, params);
+  const { rows: paymentTypes } = await pool.query(
+    empresaId === 0
+      ? tipoPagoQuery.replace("$4", "$4")
+      : tipoPagoQuery,
+    empresaId === 0
+      ? [empresaId, desde, hasta, empresaIds]
+      : params
+  );
 
   // =========================
-  // 5️⃣ ESTADOS DEL MES
+  // 5️⃣ ESTADOS
   // =========================
   const stateQuery = `
     SELECT
       s.estado,
       COUNT(*) AS cnt
     FROM solicitudes s
-    WHERE ($1 = 0 OR s.empresa_id = $1)
-      AND date_trunc('month', s.fecha_solicitud)
-          = to_date($2 || '-01', 'YYYY-MM-DD')
+    WHERE (${empresaId === 0 ? "s.empresa_id = ANY($4)" : "s.empresa_id = $1"})
+      AND s.fecha_solicitud BETWEEN $2 AND $3
     GROUP BY s.estado;
   `;
 
-  const { rows: states } = await pool.query(stateQuery, params);
+  const { rows: states } = await pool.query(
+    empresaId === 0
+      ? stateQuery
+      : stateQuery,
+    empresaId === 0
+      ? [empresaId, desde, hasta, empresaIds]
+      : params
+  );
 
   // =========================
-  // 6️⃣ CASHFLOW DIARIO DEL MES
+  // 6️⃣ CASHFLOW
   // =========================
   const cashflowQuery = `
     SELECT
@@ -591,18 +632,23 @@ async function getReporteMensual(empresaId, periodo) {
       SUM(v.total_pagado) AS total_pagado
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
-    WHERE ($1 = 0 OR v.empresa_id = $1)
-      AND date_trunc('month', s.fecha_solicitud)
-          = to_date($2 || '-01', 'YYYY-MM-DD')
+    WHERE ${empresaFilter}
+      AND s.fecha_solicitud BETWEEN $2 AND $3
     GROUP BY s.fecha_solicitud
     ORDER BY s.fecha_solicitud;
   `;
 
-  const { rows: cashflow } = await pool.query(cashflowQuery, params);
+  const { rows: cashflow } = await pool.query(
+    empresaId === 0
+      ? cashflowQuery.replace("$4", "$4")
+      : cashflowQuery,
+    empresaId === 0
+      ? [empresaId, desde, hasta, empresaIds]
+      : params
+  );
 
   return {
     kpis,
-    monthly: [],
     providers,
     paymentTypes,
     states,
@@ -610,6 +656,7 @@ async function getReporteMensual(empresaId, periodo) {
     detalle
   };
 }
+
 
 
 
@@ -728,6 +775,6 @@ module.exports = {
   getDashboardKPIs,
   getDashboardDetalle,
   getResumenPorEmpresa,
-  getReporteMensual,
+  getReporteRango,
   getReporteSolicitudesCompleto
 };
