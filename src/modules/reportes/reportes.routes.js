@@ -41,6 +41,6 @@ router.get("/proveedores/:id/perfil", auth, empresa, ctrl.proveedorPerfil);
 router.get("/rango", auth, empresa, ctrl.reporteRango);
 
 // GET /reportes/rango/excel
-router.get("/rango/excel", auth, empresa, ctrl.reporteRangoExcel);
+router.post("/rango/excel", auth, empresa, ctrl.reporteRangoExcel);
 
 module.exports = router;
