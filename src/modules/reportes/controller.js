@@ -309,6 +309,38 @@ async function reporteRango(req, res, next) {
 }
 
 
+async function reporteRangoExcel(req, res, next) {
+  try {
+    const wb = await service.exportReporteRangoExcel({
+      empresaId: req.empresa_id,
+      empresaIds: req.empresa_ids,
+      modo: req.empresaModo,
+      desde: req.query.desde,
+      hasta: req.query.hasta,
+      metadata: {
+        empresaNombre: req.empresa_nombre
+      }
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=reporte.xlsx"
+    );
+
+    await wb.xlsx.write(res);
+    res.end();
+
+  } catch (err) {
+    next(err);
+  }
+}
+
+
 module.exports = {
   resumen,
   totalesProveedor,
@@ -321,5 +353,6 @@ module.exports = {
   dashboardPorMes,
   proveedoresReporte,
   proveedorPerfil,
-  reporteRango
+  reporteRango,
+  reporteRangoExcel
 };

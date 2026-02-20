@@ -220,6 +220,21 @@ getReporteRango: async (ctx) => {
 },
 
 
+exportReporteRangoExcel: async (ctx) => {
+  const data = await repo.getReporteRango(ctx);
+
+  const generarExcel = require("./excel");
+
+  return await generarExcel({
+    empresaNombre: ctx.metadata.empresaNombre,
+    desde: ctx.desde,
+    hasta: ctx.hasta,
+    kpis: data.kpis,
+    detalle: data.detalle
+  });
+}
+
+
 };
 
 
