@@ -1,5 +1,6 @@
 const repo = require('./repository');
 const assertCtx = require('../../utils/assertReporteCtx');
+const excel = require('./excel');
 
 module.exports = {
 
@@ -148,59 +149,6 @@ const monthly = await repo.getMensual(empresaId, empresaIds, limite);
 },
 
 
-// exportDetallePDF: async (ctx) => {
-//   try {
-//   assertCtx(ctx);
-
-//   const { empresaId, empresaIds, filtros } = ctx;
-
-//   const detalle = await repo.getDashboardDetalle(empresaId, empresaIds);
-
-//   const filtrado = detalle.filter(d => {
-//     if (filtros.estado && filtros.estado !== "Todos") {
-//       return d.estado === filtros.estado;
-//     }
-//     return true;
-//   });
-
-//   }catch (err) {
-//   console.error("❌ ERROR PDF SERVICE:", err);
-//   throw err;
-//   }
-// }, 
-
-exportReporteSolicitudesPDF: async (ctx) => {
-  try {
-    assertCtx(ctx);
-
-    const generarReporteSolicitudesPDF =
-      require("./pdf");
-
-    const withTimeout = (promise, ms) =>
-      Promise.race([
-        promise,
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("PDF timeout")), ms)
-        )
-      ]);
-
-    return await withTimeout(
-      generarReporteSolicitudesPDF({
-        empresaId: ctx.empresaId,
-        filtros: ctx.filtros,
-        metadata: ctx.metadata || {}
-      }),
-      15000
-    );
-
-
-  } catch (err) {
-    console.error("❌ ERROR NUEVO PDF:", err);
-    throw err;
-  }
-},
-
-
 
 getReporteRango: async (ctx) => {
   assertCtx(ctx);
@@ -221,18 +169,23 @@ getReporteRango: async (ctx) => {
 
 
 exportReporteRangoExcel: async (ctx) => {
-  const data = await repo.getReporteRango(ctx);
 
-  const generarExcel = require("./excel");
+  assertCtx(ctx);
 
-  return await generarExcel({
-    empresaNombre: ctx.metadata.empresaNombre,
+  const data = await repo.getReporteRango({
+    empresaId: ctx.empresaId,
+    empresaIds: ctx.empresaIds,
+    desde: ctx.desde,
+    hasta: ctx.hasta
+  });
+
+  return await excel({
+    empresaNombre: ctx.metadata?.empresaNombre,
     desde: ctx.desde,
     hasta: ctx.hasta,
-    kpis: data.kpis,
-    detalle: data.detalle
+    ...data
   });
-}
+},
 
 
 };
