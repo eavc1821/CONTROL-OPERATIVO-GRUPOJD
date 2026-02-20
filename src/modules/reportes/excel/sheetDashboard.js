@@ -1,4 +1,5 @@
 const styles = require("./styles");
+const { formatDDMMYY } = require("./utils");
 
 module.exports = function sheetDashboard(wb, data) {
 
@@ -11,7 +12,7 @@ module.exports = function sheetDashboard(wb, data) {
   ws.getCell("A1").fill = styles.headerBlue;
 
   ws.mergeCells("A2:D2");
-  ws.getCell("A2").value = "Resumen General";
+  ws.getCell("A2").value = `Resumen General (${formatDDMMYY(data.desde)} - ${formatDDMMYY(data.hasta)})`;
 
   ws.addRow([]);
   ws.addRow(["KPI", "Valor"]);

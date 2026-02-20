@@ -1,14 +1,15 @@
 module.exports = {
+
   headerBlue: {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: "1E3A8A" }
+    fgColor: { argb: "0B1F3A" } // azul corporativo oscuro
   },
 
   tableHeader: {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: "0F172A" }
+    fgColor: { argb: "1E293B" } // slate profesional
   },
 
   whiteBold: {

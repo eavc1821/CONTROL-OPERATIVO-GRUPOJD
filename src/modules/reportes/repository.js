@@ -758,6 +758,15 @@ async function getReporteSolicitudesCompleto({
 }
 
 
+async function getEmpresaNombre(empresaId) {
+  const { rows } = await pool.query(
+    `SELECT nombre FROM empresas WHERE id = $1`,
+    [empresaId]
+  );
+
+  return rows[0]?.nombre || "Empresa";
+}
+
 module.exports = {
   getResumen,
   getPorProveedor,
@@ -776,5 +785,6 @@ module.exports = {
   getDashboardDetalle,
   getResumenPorEmpresa,
   getReporteRango,
-  getReporteSolicitudesCompleto
+  getReporteSolicitudesCompleto,
+  getEmpresaNombre
 };

@@ -179,8 +179,10 @@ exportReporteRangoExcel: async (ctx) => {
     hasta: ctx.hasta
   });
 
+  const empresaNombre = await repo.getEmpresaNombre(ctx.empresaId);
+
   return await excel({
-    empresaNombre: ctx.metadata?.empresaNombre,
+    empresaNombre,
     desde: ctx.desde,
     hasta: ctx.hasta,
     ...data
