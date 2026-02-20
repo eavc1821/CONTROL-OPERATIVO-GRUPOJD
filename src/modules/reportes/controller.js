@@ -315,9 +315,17 @@ async function reporteRangoExcel(req, res, next) {
     const wb = await service.exportReporteRangoExcel({
       empresaId: req.empresa_id,
       empresaIds: req.empresa_ids,
+      modo: req.empresaModo,
+
       desde: filtros.desde,
       hasta: filtros.hasta,
+
+      estado: filtros.estado,
+      proveedor: filtros.proveedor,
+
       charts,
+      filtros,
+
       metadata: {
         empresaNombre: req.empresa_nombre
       }

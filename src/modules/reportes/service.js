@@ -153,7 +153,7 @@ const monthly = await repo.getMensual(empresaId, empresaIds, limite);
 getReporteRango: async (ctx) => {
   assertCtx(ctx);
 
-  const { empresaId, empresaIds, desde, hasta } = ctx;
+  const { empresaId, empresaIds, desde, hasta, estado, proveedor } = ctx;
 
   if (!desde || !hasta) {
     throw new Error("Rango de fechas inválido");
@@ -163,7 +163,9 @@ getReporteRango: async (ctx) => {
     empresaId,
     empresaIds,
     desde,
-    hasta
+    hasta,
+    estado,
+    proveedor
   });
 },
 
@@ -176,7 +178,9 @@ exportReporteRangoExcel: async (ctx) => {
     empresaId: ctx.empresaId,
     empresaIds: ctx.empresaIds,
     desde: ctx.desde,
-    hasta: ctx.hasta
+    hasta: ctx.hasta,
+    estado: ctx.estado,
+    proveedor: ctx.proveedor,
   });
 
   const empresaNombre = await repo.getEmpresaNombre(ctx.empresaId);

@@ -106,7 +106,7 @@ module.exports = async function buildExcel(data) {
     if (buffer) {
 
       const imageId = wb.addImage({
-        buffer,
+        base64: data.charts.providers,
         extension: "png"
       });
 
@@ -127,7 +127,7 @@ module.exports = async function buildExcel(data) {
     if (buffer) {
 
       const imageId = wb.addImage({
-        buffer,
+        base64: data.charts.states,
         extension: "png"
       });
 
