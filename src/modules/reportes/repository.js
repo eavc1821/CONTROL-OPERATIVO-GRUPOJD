@@ -767,7 +767,7 @@ async function getEmpresaNombre(empresaId) {
 
 
 const QueryStream = require("pg-query-stream");
-const db = require("../../config/db"); // ajusta si tu path cambia
+const db = require("../../core/db"); // ajusta si tu path cambia
 
 async function getReporteRangoStream(params) {
 
