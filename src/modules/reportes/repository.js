@@ -459,42 +459,74 @@ async function getResumenPorEmpresa(empresaIds = []) {
   return rows;
 }
 
-async function getReporteRango({ empresaId, empresaIds = [], desde, hasta }) {
+
+async function getReporteRango({
+  empresaId,
+  empresaIds = [],
+  desde,
+  hasta,
+  estado,
+  proveedor
+}) {
 
   if (!desde || !hasta) {
     throw new Error("Rango de fechas requerido");
   }
 
-  const params = [empresaId, desde, hasta];
+  // ======================================
+  // BUILD WHERE DINÁMICO (UNA SOLA VEZ)
+  // ======================================
 
-  const empresaFilter =
-    empresaId === 0
-      ? `v.empresa_id = ANY($4)`
-      : `v.empresa_id = $1`;
+  const params = [];
+  let idx = 1;
 
-  // =========================
+  const where = [];
+
+  // Empresa
+  if (empresaId === 0) {
+    where.push(`v.empresa_id = ANY($${idx++})`);
+    params.push(empresaIds);
+  } else {
+    where.push(`v.empresa_id = $${idx++}`);
+    params.push(empresaId);
+  }
+
+  // Fechas
+  where.push(`s.fecha_solicitud BETWEEN $${idx} AND $${idx + 1}`);
+  params.push(desde, hasta);
+  idx += 2;
+
+  // Estado (opcional)
+  if (estado && estado !== "Todos") {
+    where.push(`LOWER(s.estado) = LOWER($${idx++})`);
+    params.push(estado);
+  }
+
+  // Proveedor (opcional)
+  if (proveedor && proveedor !== "Todos") {
+    where.push(`p.nombre = $${idx++}`);
+    params.push(proveedor);
+  }
+
+  const whereSQL = where.join(" AND ");
+
+  // ======================================
   // 1️⃣ KPIs
-  // =========================
+  // ======================================
+
   const kpiQuery = `
     SELECT
-      COALESCE(SUM(v.total_solicitud), 0) AS total_solicitado,
-      COALESCE(SUM(v.total_pagado), 0) AS total_pagado,
-      COALESCE(SUM(v.saldo_restante), 0) AS saldo_pendiente,
+      COALESCE(SUM(v.total_solicitud),0) AS total_solicitado,
+      COALESCE(SUM(v.total_pagado),0) AS total_pagado,
+      COALESCE(SUM(v.saldo_restante),0) AS saldo_pendiente,
       COUNT(*) AS total_solicitudes
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
-    WHERE ${empresaFilter}
-      AND s.fecha_solicitud BETWEEN $2 AND $3;
+    JOIN proveedores p ON p.id = v.proveedor_id
+    WHERE ${whereSQL};
   `;
 
-  const { rows: kpiRows } = await pool.query(
-    empresaId === 0
-      ? kpiQuery.replace("$4", "$4")
-      : kpiQuery,
-    empresaId === 0
-      ? [empresaId, desde, hasta, empresaIds]
-      : params
-  );
+  const { rows: kpiRows } = await pool.query(kpiQuery, params);
 
   const kpisRaw = kpiRows[0] || {};
 
@@ -505,9 +537,10 @@ async function getReporteRango({ empresaId, empresaIds = [], desde, hasta }) {
     total_solicitudes: Number(kpisRaw.total_solicitudes || 0),
   };
 
-  // =========================
+  // ======================================
   // 2️⃣ DETALLE
-  // =========================
+  // ======================================
+
   const detalleQuery = `
     SELECT
       s.correlativo,
@@ -535,23 +568,16 @@ async function getReporteRango({ empresaId, empresaIds = [], desde, hasta }) {
     ) ultimo_pago ON true
     LEFT JOIN cuentas_financieras cf
       ON cf.id = ultimo_pago.cuenta_financiera_id
-    WHERE ${empresaFilter}
-      AND s.fecha_solicitud BETWEEN $2 AND $3
+    WHERE ${whereSQL}
     ORDER BY s.fecha_solicitud DESC;
   `;
 
-  const { rows: detalle } = await pool.query(
-    empresaId === 0
-      ? detalleQuery.replace("$4", "$4")
-      : detalleQuery,
-    empresaId === 0
-      ? [empresaId, desde, hasta, empresaIds]
-      : params
-  );
+  const { rows: detalle } = await pool.query(detalleQuery, params);
 
-  // =========================
+  // ======================================
   // 3️⃣ TOP PROVEEDORES
-  // =========================
+  // ======================================
+
   const providersQuery = `
     SELECT
       p.nombre AS proveedor,
@@ -559,25 +585,18 @@ async function getReporteRango({ empresaId, empresaIds = [], desde, hasta }) {
     FROM vw_total_pagado_por_solicitud v
     JOIN proveedores p ON p.id = v.proveedor_id
     JOIN solicitudes s ON s.id = v.solicitud_id
-    WHERE ${empresaFilter}
-      AND s.fecha_solicitud BETWEEN $2 AND $3
+    WHERE ${whereSQL}
     GROUP BY p.nombre
     ORDER BY total_compras DESC
     LIMIT 10;
   `;
 
-  const { rows: providers } = await pool.query(
-    empresaId === 0
-      ? providersQuery.replace("$4", "$4")
-      : providersQuery,
-    empresaId === 0
-      ? [empresaId, desde, hasta, empresaIds]
-      : params
-  );
+  const { rows: providers } = await pool.query(providersQuery, params);
 
-  // =========================
-  // 4️⃣ TIPO DE PAGO
-  // =========================
+  // ======================================
+  // 4️⃣ TIPO PAGO
+  // ======================================
+
   const tipoPagoQuery = `
     SELECT
       s.tipo_pago,
@@ -585,46 +604,35 @@ async function getReporteRango({ empresaId, empresaIds = [], desde, hasta }) {
       SUM(v.total_pagado) AS total_pagado
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
-    WHERE ${empresaFilter}
-      AND s.fecha_solicitud BETWEEN $2 AND $3
+    JOIN proveedores p ON p.id = v.proveedor_id
+    WHERE ${whereSQL}
     GROUP BY s.tipo_pago
     ORDER BY s.tipo_pago;
   `;
 
-  const { rows: paymentTypes } = await pool.query(
-    empresaId === 0
-      ? tipoPagoQuery.replace("$4", "$4")
-      : tipoPagoQuery,
-    empresaId === 0
-      ? [empresaId, desde, hasta, empresaIds]
-      : params
-  );
+  const { rows: paymentTypes } = await pool.query(tipoPagoQuery, params);
 
-  // =========================
+  // ======================================
   // 5️⃣ ESTADOS
-  // =========================
+  // ======================================
+
   const stateQuery = `
     SELECT
       s.estado,
       COUNT(*) AS cnt
-    FROM solicitudes s
-    WHERE (${empresaId === 0 ? "s.empresa_id = ANY($4)" : "s.empresa_id = $1"})
-      AND s.fecha_solicitud BETWEEN $2 AND $3
+    FROM vw_total_pagado_por_solicitud v
+    JOIN solicitudes s ON s.id = v.solicitud_id
+    JOIN proveedores p ON p.id = v.proveedor_id
+    WHERE ${whereSQL}
     GROUP BY s.estado;
   `;
 
-  const { rows: states } = await pool.query(
-    empresaId === 0
-      ? stateQuery
-      : stateQuery,
-    empresaId === 0
-      ? [empresaId, desde, hasta, empresaIds]
-      : params
-  );
+  const { rows: states } = await pool.query(stateQuery, params);
 
-  // =========================
+  // ======================================
   // 6️⃣ CASHFLOW
-  // =========================
+  // ======================================
+
   const cashflowQuery = `
     SELECT
       s.fecha_solicitud AS fecha,
@@ -632,20 +640,13 @@ async function getReporteRango({ empresaId, empresaIds = [], desde, hasta }) {
       SUM(v.total_pagado) AS total_pagado
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
-    WHERE ${empresaFilter}
-      AND s.fecha_solicitud BETWEEN $2 AND $3
+    JOIN proveedores p ON p.id = v.proveedor_id
+    WHERE ${whereSQL}
     GROUP BY s.fecha_solicitud
     ORDER BY s.fecha_solicitud;
   `;
 
-  const { rows: cashflow } = await pool.query(
-    empresaId === 0
-      ? cashflowQuery.replace("$4", "$4")
-      : cashflowQuery,
-    empresaId === 0
-      ? [empresaId, desde, hasta, empresaIds]
-      : params
-  );
+  const { rows: cashflow } = await pool.query(cashflowQuery, params);
 
   return {
     kpis,
@@ -656,9 +657,6 @@ async function getReporteRango({ empresaId, empresaIds = [], desde, hasta }) {
     detalle
   };
 }
-
-
-
 
 
 async function getReporteSolicitudesCompleto({

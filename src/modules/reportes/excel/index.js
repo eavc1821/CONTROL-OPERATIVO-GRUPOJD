@@ -101,43 +101,33 @@ module.exports = async function buildExcel(data) {
   // TOP PROVEEDORES
   if (data.charts?.providers) {
 
-    const buffer = await svgToPngBuffer(data.charts.providers);
+    const imageId = wb.addImage({
+    base64: data.charts.providers,
+    extension: "png"
+  });
 
-    if (buffer) {
+  ws.addImage(imageId, {
+    tl: { col: 0, row: chartStartRow },
+    ext: { width: 500, height: 280 }
+  });
 
-      const imageId = wb.addImage({
-        base64: data.charts.providers,
-        extension: "png"
-      });
-
-      ws.addImage(imageId, {
-        tl: { col: 0, row: chartStartRow },
-        ext: { width: 500, height: 280 }
-      });
-
-      chartsInserted++;
-    }
+  chartsInserted++;
   }
 
   // ESTADOS
   if (data.charts?.states) {
 
-    const buffer = await svgToPngBuffer(data.charts.states);
+    const imageId = wb.addImage({
+    base64: data.charts.provider,
+    extension: "png"
+  });
 
-    if (buffer) {
+  ws.addImage(imageId, {
+    tl: { col: 0, row: chartStartRow },
+    ext: { width: 500, height: 280 }
+  });
 
-      const imageId = wb.addImage({
-        base64: data.charts.states,
-        extension: "png"
-      });
-
-      ws.addImage(imageId, {
-        tl: { col: chartsInserted ? 6 : 0, row: chartStartRow },
-        ext: { width: 400, height: 280 }
-      });
-
-      chartsInserted++;
-    }
+  chartsInserted++;
   }
 
   // mover cursor solo si hay charts
