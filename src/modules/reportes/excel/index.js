@@ -1,13 +1,11 @@
 const ExcelJS = require("exceljs");
 const styles = require("./styles");
 const { formatDDMMYY } = require("./utils");
-const layout = require("./layout");
 
 module.exports = async function buildExcel(data, res) {
 
-
-    // ====================================
-  // HEADERS HTTP (ANTES DEL STREAM)
+  // ====================================
+  // HEADERS HTTP
   // ====================================
   res.setHeader(
     "Content-Type",
@@ -29,6 +27,24 @@ module.exports = async function buildExcel(data, res) {
   });
 
   const ws = wb.addWorksheet("Reporte");
+
+  // ====================================
+  // COLUMNAS (DEFINIR ANTES)
+  // ====================================
+  ws.columns = [
+    { width: 18 }, // correlativo
+    { width: 32 }, // proveedor
+    { width: 16 }, // fecha solicitud
+    { width: 16 }, // fecha factura
+    { width: 16 }, // factura
+    { width: 15 }, // tipo pago
+    { width: 18 }, // banco
+    { width: 20 }, // cuenta
+    { width: 15 }, // total
+    { width: 15 }, // pagado
+    { width: 15 }, // saldo
+    { width: 14 }  // estado
+  ];
 
   // ====================================
   // HEADER
@@ -80,11 +96,11 @@ module.exports = async function buildExcel(data, res) {
 
   ws.getCell("A5").alignment = { horizontal: "center" };
 
-  let currentRow = 6;
-
   // ====================================
   // KPIs
   // ====================================
+
+  let currentRow = 6;
 
   const kpis = [
     ["Total solicitado", data.kpis?.total_solicitado, "FDE68A"],
@@ -125,11 +141,11 @@ module.exports = async function buildExcel(data, res) {
     col += 3;
   });
 
-  currentRow += layout.KPI_HEIGHT;
-
-  while (ws.rowCount < currentRow) {
-    ws.addRow([]).commit();
-  }
+  // ====================================
+  // ESPACIO VISUAL (IMPORTANTE)
+  // ====================================
+  ws.addRow([]).commit();
+  ws.addRow([]).commit();
 
   // ====================================
   // TABLA
@@ -142,63 +158,61 @@ module.exports = async function buildExcel(data, res) {
   ];
 
   const headerRow = ws.addRow(headers);
+
   headerRow.eachCell(c => {
     c.fill = styles.tableHeader;
     c.font = styles.whiteBold;
     c.alignment = { horizontal: "center" };
   });
+
+  const headerRowNumber = headerRow.number;
   headerRow.commit();
 
-  const headerRowNumber = ws.rowCount;
+  // ====================================
+  // FILAS STREAM
+  // ====================================
 
   for await (const d of data.rowStream) {
 
-  const row = ws.addRow([
-    d.correlativo,
-    d.proveedor,
-    formatDDMMYY(d.fecha_solicitud),
-    formatDDMMYY(d.fecha_factura),
-    d.numero_factura || "-",
-    d.tipo_pago,
-    d.banco,
-    d.numero_cuenta,
-    Number(d.total_solicitud || 0),
-    Number(d.total_pagado || 0),
-    Number(d.saldo || 0),
-    d.estado
-  ]);
+    const row = ws.addRow([
+      d.correlativo,
+      d.proveedor,
+      formatDDMMYY(d.fecha_solicitud),
+      formatDDMMYY(d.fecha_factura),
+      d.numero_factura || "-",
+      d.tipo_pago,
+      d.banco,
+      d.numero_cuenta,
+      Number(d.total_solicitud || 0),
+      Number(d.total_pagado || 0),
+      Number(d.saldo || 0),
+      d.estado
+    ]);
 
-  row.getCell(9).numFmt = styles.moneyFmt;
-  row.getCell(10).numFmt = styles.moneyFmt;
-  row.getCell(11).numFmt = styles.moneyFmt;
+    row.getCell(9).numFmt = styles.moneyFmt;
+    row.getCell(10).numFmt = styles.moneyFmt;
+    row.getCell(11).numFmt = styles.moneyFmt;
 
-  row.commit();
-}
+    row.commit();
+  }
+
+  // ====================================
+  // FILTROS POR COLUMNA
+  // ====================================
 
   ws.autoFilter = {
     from: `A${headerRowNumber}`,
     to: `L${headerRowNumber}`
   };
 
+  // ====================================
+  // FREEZE HEADER TABLA
+  // ====================================
+
   ws.views = [{
     state: "frozen",
     ySplit: headerRowNumber
   }];
-
-  ws.columns = [
-  { width: 18 }, // correlativo
-  { width: 28 }, // proveedor
-  { width: 15 }, // fecha solicitud
-  { width: 15 }, // fecha factura
-  { width: 16 }, // factura
-  { width: 14 }, // tipo pago
-  { width: 16 }, // banco
-  { width: 20 }, // cuenta
-  { width: 14 }, // total
-  { width: 14 }, // pagado
-  { width: 14 }, // saldo
-  { width: 12 }  // estado
-];
 
   ws.commit();
   await wb.commit();
