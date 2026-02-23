@@ -313,17 +313,6 @@ async function reporteRangoExcel(req, res, next) {
   try {
     const { filtros } = req.body;
 
-    // headers primero (IMPORTANTE)
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=reporte.xlsx"
-    );
-
     // ahora el service escribe directo al stream
     await service.exportReporteRangoExcel({
       empresaId: req.empresa_id,

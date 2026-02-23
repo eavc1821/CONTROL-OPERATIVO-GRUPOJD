@@ -5,6 +5,23 @@ const layout = require("./layout");
 
 module.exports = async function buildExcel(data, res) {
 
+
+    // ====================================
+  // HEADERS HTTP (ANTES DEL STREAM)
+  // ====================================
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  );
+
+  res.setHeader(
+    "Content-Disposition",
+    "attachment; filename=reporte_solicitudes.xlsx"
+  );
+
+  // ====================================
+  // WORKBOOK STREAM
+  // ====================================
   const wb = new ExcelJS.stream.xlsx.WorkbookWriter({
     stream: res,
     useStyles: true,

@@ -767,42 +767,84 @@ async function getEmpresaNombre(empresaId) {
 
 
 const QueryStream = require("pg-query-stream");
-const db = require("../../core/db"); // ajusta si tu path cambia
+const db = require("../../core/db"); 
 
-async function getReporteRangoStream(params) {
+async function getReporteRangoStream({
+  empresaId,
+  empresaIds = [],
+  desde,
+  hasta,
+  estado,
+  proveedor
+}) {
 
-  const client = await db.connect();
+  const client = await pool.connect();
+
+  const params = [];
+  let idx = 1;
+  const where = [];
+
+  // EMPRESA
+  if (empresaId === 0) {
+    where.push(`v.empresa_id = ANY($${idx++})`);
+    params.push(empresaIds);
+  } else {
+    where.push(`v.empresa_id = $${idx++}`);
+    params.push(empresaId);
+  }
+
+  // FECHAS
+  where.push(`s.fecha_solicitud BETWEEN $${idx} AND $${idx + 1}`);
+  params.push(desde, hasta);
+  idx += 2;
+
+  // ESTADO
+  if (estado && estado !== "Todos") {
+    where.push(`LOWER(s.estado) = LOWER($${idx++})`);
+    params.push(estado);
+  }
+
+  // PROVEEDOR
+  if (proveedor && proveedor !== "Todos") {
+    where.push(`p.nombre = $${idx++}`);
+    params.push(proveedor);
+  }
+
+  const whereSQL = where.join(" AND ");
 
   const query = `
     SELECT
-      correlativo,
-      proveedor,
-      fecha_solicitud,
-      fecha_factura,
-      numero_factura,
-      tipo_pago,
-      banco,
-      numero_cuenta,
-      total_solicitud,
-      total_pagado,
-      saldo,
-      estado
-    FROM vw_reporte_rango
-    WHERE empresa_id = $1
-      AND fecha_solicitud BETWEEN $2 AND $3
-      AND ($4 = 'Todos' OR estado = $4)
-      AND ($5 = 'Todos' OR proveedor = $5)
-    ORDER BY fecha_solicitud DESC
+      s.correlativo,
+      p.nombre AS proveedor,
+      s.tipo_pago,
+      s.estado,
+      s.fecha_solicitud,
+      v.total_solicitud,
+      v.total_pagado,
+      v.saldo_restante AS saldo,
+      v.numero_factura,
+      v.fecha_factura,
+      cf.banco,
+      cf.numero_cuenta
+    FROM vw_total_pagado_por_solicitud v
+    JOIN solicitudes s ON s.id = v.solicitud_id
+    JOIN proveedores p ON p.id = v.proveedor_id
+    LEFT JOIN LATERAL (
+      SELECT pa.cuenta_financiera_id
+      FROM pagos pa
+      WHERE pa.solicitud_id = s.id
+        AND pa.empresa_id = s.empresa_id
+      ORDER BY pa.fecha_pago DESC, pa.created_at DESC
+      LIMIT 1
+    ) ultimo_pago ON true
+    LEFT JOIN cuentas_financieras cf
+      ON cf.id = ultimo_pago.cuenta_financiera_id
+    WHERE ${whereSQL}
+    ORDER BY s.fecha_solicitud DESC
   `;
 
   const stream = client.query(
-    new QueryStream(query, [
-      params.empresaId,
-      params.desde,
-      params.hasta,
-      params.estado || "Todos",
-      params.proveedor || "Todos"
-    ])
+    new QueryStream(query, params)
   );
 
   stream.on("end", () => client.release());
