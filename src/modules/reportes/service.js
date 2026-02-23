@@ -189,7 +189,6 @@ exportReporteRangoExcel: async (ctx) => {
     empresaNombre,
     desde: ctx.desde,
     hasta: ctx.hasta,
-    charts: ctx.charts || {},
     ...data
   });
 },

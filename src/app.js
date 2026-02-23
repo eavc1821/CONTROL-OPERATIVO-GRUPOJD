@@ -38,8 +38,11 @@ app.use(cors({
 
 app.options("*", cors());
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({ limit: "10mb" }));
+app.use(bodyParser.urlencoded({
+  limit: "10mb",
+  extended: true
+}));
 
 const fs = require("fs");
 

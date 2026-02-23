@@ -1,7 +1,6 @@
 const ExcelJS = require("exceljs");
 const styles = require("./styles");
 const { formatDDMMYY } = require("./utils");
-const svgToPngBuffer = require("./chartImage");
 const layout = require("./layout");
 
 module.exports = async function buildExcel(data) {
@@ -91,56 +90,7 @@ module.exports = async function buildExcel(data) {
 
   currentRow += layout.KPI_HEIGHT;
 
-  // ====================================
-  // CHARTS (AUTO-LAYOUT INTELIGENTE)
-  // ====================================
-  let chartsInserted = 0;
-  const chartStartRow = currentRow;
 
-  // TOP PROVEEDORES
-  if (data.charts?.providers) {
-
-    const cleanBase64 = data.charts.providers
-      ?.replace(/^data:image\/png;base64,/, "");
-
-    const imageId = wb.addImage({
-      base64: cleanBase64,
-      extension: "png"
-    });
-
-    ws.addImage(imageId, {
-      tl: { col: 0, row: chartStartRow },
-    ext: { width: 500, height: 280 }
-  });
-
-  chartsInserted++;
-  }
-
-  // ESTADOS
-  if (data.charts?.states) {
-
-    const cleanBase64 = data.charts.states
-      ?.replace(/^data:image\/png;base64,/, "");
-
-    const imageId = wb.addImage({
-    base64: cleanBase64,
-    extension: "png"
-  });
-
-  ws.addImage(imageId, {
-    tl: { col: 0, row: chartStartRow },
-    ext: { width: 500, height: 280 }
-  });
-
-  chartsInserted++;
-  }
-
-  // mover cursor solo si hay charts
-  if (chartsInserted > 0) {
-    currentRow += layout.CHART_HEIGHT_ROWS;
-  }
-
-  currentRow += layout.SPACING;
 
   // ====================================
   // PREPARAR ESPACIO HASTA TABLA
