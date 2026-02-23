@@ -185,9 +185,20 @@ module.exports = async function buildExcel(data, res) {
     ySplit: headerRowNumber
   }];
 
-  ws.columns.forEach(c => {
-    c.width = 20;
-  });
+  ws.columns = [
+  { width: 18 }, // correlativo
+  { width: 28 }, // proveedor
+  { width: 15 }, // fecha solicitud
+  { width: 15 }, // fecha factura
+  { width: 16 }, // factura
+  { width: 14 }, // tipo pago
+  { width: 16 }, // banco
+  { width: 20 }, // cuenta
+  { width: 14 }, // total
+  { width: 14 }, // pagado
+  { width: 14 }, // saldo
+  { width: 12 }  // estado
+];
 
   ws.commit();
   await wb.commit();

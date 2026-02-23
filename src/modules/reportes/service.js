@@ -174,28 +174,51 @@ exportReporteRangoExcel: async (ctx) => {
 
   assertCtx(ctx);
 
+  // =====================================
+  // 1️⃣ Nombre empresa
+  // =====================================
   const empresaNombre = await repo.getEmpresaNombre(ctx.empresaId);
 
-  const rowStream = await repo.getReporteRangoStream({
+  // =====================================
+  // 2️⃣ Obtener KPIs (query normal)
+  //    ⚠️ SOLO usamos KPIs, no detalle
+  // =====================================
+  const resumen = await repo.getReporteRango({
     empresaId: ctx.empresaId,
+    empresaIds: ctx.empresaIds,
     desde: ctx.desde,
     hasta: ctx.hasta,
     estado: ctx.estado,
     proveedor: ctx.proveedor
   });
 
+  // =====================================
+  // 3️⃣ Stream REAL del detalle
+  // =====================================
+  const rowStream = await repo.getReporteRangoStream({
+    empresaId: ctx.empresaId,
+    empresaIds: ctx.empresaIds,
+    desde: ctx.desde,
+    hasta: ctx.hasta,
+    estado: ctx.estado,
+    proveedor: ctx.proveedor
+  });
+
+  // =====================================
+  // 4️⃣ Generar Excel streaming
+  // =====================================
   await excel(
     {
       empresaNombre,
       desde: ctx.desde,
       hasta: ctx.hasta,
       filtros: ctx.filtros,
-      rowStream // 👈 NUEVO
+      kpis: resumen.kpis, // 👈 KPIs reales
+      rowStream
     },
     ctx.res
   );
 },
-
 
 };
 
