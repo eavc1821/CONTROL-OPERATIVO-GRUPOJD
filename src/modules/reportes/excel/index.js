@@ -94,20 +94,22 @@ module.exports = async function buildExcel(data) {
   // ====================================
   // CHARTS (AUTO-LAYOUT INTELIGENTE)
   // ====================================
-
   let chartsInserted = 0;
   const chartStartRow = currentRow;
 
   // TOP PROVEEDORES
   if (data.charts?.providers) {
 
-    const imageId = wb.addImage({
-    base64: data.charts.providers,
-    extension: "png"
-  });
+    const cleanBase64 = data.charts.providers
+      ?.replace(/^data:image\/png;base64,/, "");
 
-  ws.addImage(imageId, {
-    tl: { col: 0, row: chartStartRow },
+    const imageId = wb.addImage({
+      base64: cleanBase64,
+      extension: "png"
+    });
+
+    ws.addImage(imageId, {
+      tl: { col: 0, row: chartStartRow },
     ext: { width: 500, height: 280 }
   });
 
@@ -117,8 +119,11 @@ module.exports = async function buildExcel(data) {
   // ESTADOS
   if (data.charts?.states) {
 
+    const cleanBase64 = data.charts.states
+      ?.replace(/^data:image\/png;base64,/, "");
+
     const imageId = wb.addImage({
-    base64: data.charts.provider,
+    base64: cleanBase64,
     extension: "png"
   });
 
