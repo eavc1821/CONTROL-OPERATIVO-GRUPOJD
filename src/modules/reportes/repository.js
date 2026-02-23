@@ -1,5 +1,23 @@
 const pool = require('../../core/db');
 
+function getMesActual() {
+  const now = new Date();
+
+  const desde = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    1
+  ).toISOString().slice(0, 10);
+
+  const hasta = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0
+  ).toISOString().slice(0, 10);
+
+  return { desde, hasta };
+}
+
 async function getResumen(empresaId) {
   const { rows } = await pool.query(`
     SELECT *
@@ -242,7 +260,14 @@ async function getTotalPagadoDelMes(empresaId, mes) {
 
 
 
-async function getProveedorPerfil(proveedorId, empresaId) {
+async function getProveedorPerfil(proveedorId, empresaId, filtros = {}) {
+
+  const rango = filtros.desde && filtros.hasta
+    ? filtros
+    : getMesActual();
+
+  const { desde, hasta } = rango;
+
 
   // 1️⃣ DATOS DEL PROVEEDOR
   const proveedorQuery = `
@@ -280,10 +305,12 @@ async function getProveedorPerfil(proveedorId, empresaId) {
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
     WHERE s.proveedor_id = $1
-      AND ($2 = 0 OR v.empresa_id = $2);
+      AND ($2 = 0 OR v.empresa_id = $2)
+      AND LOWER(s.estado) IN ('aprobada','pagada')
+      AND s.fecha_solicitud::date BETWEEN $3 AND $4;
   `;
 
-  const kpiResult = await pool.query(kpiQuery, [proveedorId, empresaId]);
+  const kpiResult = await pool.query(kpiQuery, [proveedorId, empresaId, desde, hasta]);
   const kpis = kpiResult.rows[0] || {};
 
   // 3️⃣ DETALLE DE SOLICITUDES
@@ -341,11 +368,13 @@ async function getProveedorPerfil(proveedorId, empresaId) {
 
       WHERE s.proveedor_id = $1
         AND ($2 = 0 OR s.empresa_id = $2)
+        AND LOWER(s.estado) IN ('aprobada','pagada')
+        AND s.fecha_solicitud::date BETWEEN $3 AND $4
 
       ORDER BY s.fecha_solicitud DESC;
   `;
 
-  const detalleResult = await pool.query(detalleQuery, [proveedorId, empresaId]);
+  const detalleResult = await pool.query(detalleQuery, [proveedorId, empresaId, desde, hasta]);
 
   return {
     proveedor,

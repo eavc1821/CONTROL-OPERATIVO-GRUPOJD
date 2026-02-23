@@ -240,6 +240,7 @@ async function proveedoresReporte(req, res) {
 async function proveedorPerfil(req, res, next) {
   try {
     const id = Number(req.params.id);
+    const { desde, hasta } = req.query;
 
     if (Number.isNaN(id)) {
       return res.status(400).json({
@@ -248,7 +249,12 @@ async function proveedorPerfil(req, res, next) {
       });
     }
 
-    const data = await service.getProveedorPerfil(req.empresa_id, id);
+    const data = await service.getProveedorPerfil(
+      req.empresa_id,
+      id,
+      { desde, hasta }
+    );
+    
     res.json({ 
       ok: true, 
       data,

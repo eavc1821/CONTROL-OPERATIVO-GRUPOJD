@@ -32,8 +32,8 @@ module.exports = {
   getResumenPorSolicitud: (empresaId, solicitudId) =>
     repo.getResumenPorSolicitud(empresaId, solicitudId),
 
-  getProveedorPerfil: async (empresaId, id) => {
-    return await repo.getProveedorPerfil(id, empresaId);
+  getProveedorPerfil: async (empresaId, id, filtros) => {
+    return await repo.getProveedorPerfil(id, empresaId, filtros);
   },
 
   // =========================
