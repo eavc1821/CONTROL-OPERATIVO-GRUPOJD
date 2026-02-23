@@ -765,6 +765,55 @@ async function getEmpresaNombre(empresaId) {
   return rows[0]?.nombre || "Empresa";
 }
 
+
+const QueryStream = require("pg-query-stream");
+const db = require("../../config/db"); // ajusta si tu path cambia
+
+async function getReporteRangoStream(params) {
+
+  const client = await db.connect();
+
+  const query = `
+    SELECT
+      correlativo,
+      proveedor,
+      fecha_solicitud,
+      fecha_factura,
+      numero_factura,
+      tipo_pago,
+      banco,
+      numero_cuenta,
+      total_solicitud,
+      total_pagado,
+      saldo,
+      estado
+    FROM vw_reporte_rango
+    WHERE empresa_id = $1
+      AND fecha_solicitud BETWEEN $2 AND $3
+      AND ($4 = 'Todos' OR estado = $4)
+      AND ($5 = 'Todos' OR proveedor = $5)
+    ORDER BY fecha_solicitud DESC
+  `;
+
+  const stream = client.query(
+    new QueryStream(query, [
+      params.empresaId,
+      params.desde,
+      params.hasta,
+      params.estado || "Todos",
+      params.proveedor || "Todos"
+    ])
+  );
+
+  stream.on("end", () => client.release());
+  stream.on("error", () => client.release());
+
+  return stream;
+}
+
+
+
+
 module.exports = {
   getResumen,
   getPorProveedor,
@@ -784,5 +833,6 @@ module.exports = {
   getResumenPorEmpresa,
   getReporteRango,
   getReporteSolicitudesCompleto,
-  getEmpresaNombre
+  getEmpresaNombre,
+  getReporteRangoStream
 };

@@ -3,15 +3,15 @@ const styles = require("./styles");
 const { formatDDMMYY } = require("./utils");
 const layout = require("./layout");
 
-module.exports = async function buildExcel(data) {
+module.exports = async function buildExcel(data, res) {
 
-  const wb = new ExcelJS.Workbook();
+  const wb = new ExcelJS.stream.xlsx.WorkbookWriter({
+    stream: res,
+    useStyles: true,
+    useSharedStrings: true
+  });
+
   const ws = wb.addWorksheet("Reporte");
-
-  // ====================================
-  // CURSOR DINÁMICO (AUTO LAYOUT)
-  // ====================================
-  let currentRow = 1;
 
   // ====================================
   // HEADER
@@ -19,16 +19,22 @@ module.exports = async function buildExcel(data) {
 
   ws.mergeCells("A1:L1");
   ws.getCell("A1").value = data.empresaNombre || "Empresa";
-  ws.getCell("A1").font = { size: 18, bold: true, color: { argb: "FFFFFFFF" } };
+  ws.getCell("A1").font = {
+    size: 18,
+    bold: true,
+    color: { argb: "FFFFFFFF" }
+  };
   ws.getCell("A1").fill = styles.headerBlue;
-  ws.getCell("A1").alignment = { horizontal: "center", vertical: "middle" };
+  ws.getCell("A1").alignment = {
+    horizontal: "center",
+    vertical: "middle"
+  };
 
   ws.mergeCells("A2:L2");
   ws.getCell("A2").value = "Reporte de Solicitudes";
   ws.getCell("A2").alignment = { horizontal: "center" };
   ws.getCell("A2").font = { size: 13, bold: true };
 
-  // ⚠️ FIX IMPORTANTE (tenías A3:L2)
   ws.mergeCells("A3:L3");
   ws.getCell("A3").value =
     `Periodo: ${formatDDMMYY(data.desde)} - ${formatDDMMYY(data.hasta)}`;
@@ -39,12 +45,25 @@ module.exports = async function buildExcel(data) {
     `Generado: ${formatDDMMYY(new Date())}`;
   ws.getCell("A4").alignment = { horizontal: "center" };
 
+  const filtrosTexto = [];
+
+  if (data.filtros?.estado && data.filtros.estado !== "Todos") {
+    filtrosTexto.push(`Estado: ${data.filtros.estado}`);
+  }
+
+  if (data.filtros?.proveedor && data.filtros.proveedor !== "Todos") {
+    filtrosTexto.push(`Proveedor: ${data.filtros.proveedor}`);
+  }
+
   ws.mergeCells("A5:L5");
   ws.getCell("A5").value =
-    `Filtros → Estado: ${data.filtros?.estado || "Todos"} | Proveedor: ${data.filtros?.proveedor || "Todos"}`;
+    filtrosTexto.length
+      ? `Filtros → ${filtrosTexto.join(" | ")}`
+      : "Filtros → Todos";
+
   ws.getCell("A5").alignment = { horizontal: "center" };
 
-  currentRow += layout.HEADER_HEIGHT;
+  let currentRow = 6;
 
   // ====================================
   // KPIs
@@ -66,9 +85,10 @@ module.exports = async function buildExcel(data) {
     const cell = ws.getCell(currentRow, col);
 
     cell.value =
-      `${k[0]}\n${k[0] === "Solicitudes"
-        ? Number(k[1] || 0)
-        : `L. ${Number(k[1] || 0).toLocaleString()}`
+      `${k[0]}\n${
+        k[0] === "Solicitudes"
+          ? Number(k[1] || 0)
+          : `L. ${Number(k[1] || 0).toLocaleString()}`
       }`;
 
     cell.alignment = {
@@ -90,14 +110,8 @@ module.exports = async function buildExcel(data) {
 
   currentRow += layout.KPI_HEIGHT;
 
-
-
-  // ====================================
-  // PREPARAR ESPACIO HASTA TABLA
-  // ====================================
-
   while (ws.rowCount < currentRow) {
-    ws.addRow([]);
+    ws.addRow([]).commit();
   }
 
   // ====================================
@@ -110,41 +124,39 @@ module.exports = async function buildExcel(data) {
     "Total","Pagado","Saldo","Estado"
   ];
 
-  ws.addRow(headers);
-
-  const headerRowNumber = ws.lastRow.number;
-
-  ws.lastRow.eachCell(c => {
+  const headerRow = ws.addRow(headers);
+  headerRow.eachCell(c => {
     c.fill = styles.tableHeader;
     c.font = styles.whiteBold;
     c.alignment = { horizontal: "center" };
   });
+  headerRow.commit();
 
-  data.detalle?.forEach(d => {
+  const headerRowNumber = ws.rowCount;
 
-    const row = ws.addRow([
-      d.correlativo,
-      d.proveedor,
-      formatDDMMYY(d.fecha_solicitud),
-      formatDDMMYY(d.fecha_factura),
-      d.numero_factura || "-",
-      d.tipo_pago,
-      d.banco,
-      d.numero_cuenta,
-      Number(d.total_solicitud || 0),
-      Number(d.total_pagado || 0),
-      Number(d.saldo || 0),
-      d.estado
-    ]);
+  for await (const d of data.rowStream) {
 
-    row.getCell(9).numFmt = styles.moneyFmt;
-    row.getCell(10).numFmt = styles.moneyFmt;
-    row.getCell(11).numFmt = styles.moneyFmt;
-  });
+  const row = ws.addRow([
+    d.correlativo,
+    d.proveedor,
+    formatDDMMYY(d.fecha_solicitud),
+    formatDDMMYY(d.fecha_factura),
+    d.numero_factura || "-",
+    d.tipo_pago,
+    d.banco,
+    d.numero_cuenta,
+    Number(d.total_solicitud || 0),
+    Number(d.total_pagado || 0),
+    Number(d.saldo || 0),
+    d.estado
+  ]);
 
-  // ====================================
-  // AUTOFILTER + FREEZE DINÁMICO
-  // ====================================
+  row.getCell(9).numFmt = styles.moneyFmt;
+  row.getCell(10).numFmt = styles.moneyFmt;
+  row.getCell(11).numFmt = styles.moneyFmt;
+
+  row.commit();
+}
 
   ws.autoFilter = {
     from: `A${headerRowNumber}`,
@@ -156,11 +168,10 @@ module.exports = async function buildExcel(data) {
     ySplit: headerRowNumber
   }];
 
-  // ====================================
-  // COLUMN WIDTH
-  // ====================================
+  ws.columns.forEach(c => {
+    c.width = 20;
+  });
 
-  ws.columns.forEach(c => c.width = 20);
-
-  return wb;
+  ws.commit();
+  await wb.commit();
 };

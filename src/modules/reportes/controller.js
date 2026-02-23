@@ -311,8 +311,21 @@ async function reporteRango(req, res, next) {
 
 async function reporteRangoExcel(req, res, next) {
   try {
-    const { filtros} = req.body;
-    const wb = await service.exportReporteRangoExcel({
+    const { filtros } = req.body;
+
+    // headers primero (IMPORTANTE)
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=reporte.xlsx"
+    );
+
+    // ahora el service escribe directo al stream
+    await service.exportReporteRangoExcel({
       empresaId: req.empresa_id,
       empresaIds: req.empresa_ids,
       modo: req.empresaModo,
@@ -327,27 +340,16 @@ async function reporteRangoExcel(req, res, next) {
 
       metadata: {
         empresaNombre: req.empresa_nombre
-      }
+      },
+
+      // 👇 NUEVO
+      res
     });
-
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=reporte.xlsx"
-    );
-
-    await wb.xlsx.write(res);
-    res.end();
 
   } catch (err) {
     next(err);
   }
 }
-
 
 module.exports = {
   resumen,

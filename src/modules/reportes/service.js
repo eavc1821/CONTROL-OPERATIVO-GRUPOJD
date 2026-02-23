@@ -174,23 +174,26 @@ exportReporteRangoExcel: async (ctx) => {
 
   assertCtx(ctx);
 
-  const data = await repo.getReporteRango({
+  const empresaNombre = await repo.getEmpresaNombre(ctx.empresaId);
+
+  const rowStream = await repo.getReporteRangoStream({
     empresaId: ctx.empresaId,
-    empresaIds: ctx.empresaIds,
     desde: ctx.desde,
     hasta: ctx.hasta,
     estado: ctx.estado,
-    proveedor: ctx.proveedor,
+    proveedor: ctx.proveedor
   });
 
-  const empresaNombre = await repo.getEmpresaNombre(ctx.empresaId);
-
-  return await excel({
-    empresaNombre,
-    desde: ctx.desde,
-    hasta: ctx.hasta,
-    ...data
-  });
+  await excel(
+    {
+      empresaNombre,
+      desde: ctx.desde,
+      hasta: ctx.hasta,
+      filtros: ctx.filtros,
+      rowStream // 👈 NUEVO
+    },
+    ctx.res
+  );
 },
 
 
