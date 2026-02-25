@@ -103,6 +103,13 @@ app.use("/api/v1/cuentas-financieras", cuentasFinancierasRoutes);
 app.use(express.static("public"));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
+// NO cache para index.html (CRÍTICO)
+app.get("*", (req, res, next) => {
+  if (req.path.startsWith("/api")) return next();
+
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.sendFile(path.join(__dirname, "../public/index.html"));
+});
 
 app.use((err, req, res, next) => {
 console.error(err);
