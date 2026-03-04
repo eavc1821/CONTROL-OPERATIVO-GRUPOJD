@@ -728,6 +728,7 @@ async function getReporteRango({
   const { rows: cashflow } = await pool.query(cashflowQuery, params);
 
   return {
+    saldo_inicial,
     kpis,
     providers,
     paymentTypes,
