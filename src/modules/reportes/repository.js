@@ -539,6 +539,29 @@ async function getReporteRango({
 
   const whereSQL = where.join(" AND ");
 
+
+  const saldoInicialQuery = `
+    SELECT
+      COALESCE(SUM(v.saldo_restante),0) AS saldo_inicial
+    FROM vw_total_pagado_por_solicitud v
+    JOIN solicitudes s ON s.id = v.solicitud_id
+    WHERE
+      s.fecha_solicitud < $1
+    AND (
+      $2 = 0
+      OR v.empresa_id = ANY($3)
+    )
+    `;
+
+
+    const { rows: saldoRows } = await pool.query(
+      saldoInicialQuery,
+      [desde, empresaId, empresaIds]
+    );
+
+    const saldo_inicial = Number(saldoRows[0]?.saldo_inicial || 0);
+
+
   // ======================================
   // 1️⃣ KPIs
   // ======================================
@@ -557,11 +580,38 @@ async function getReporteRango({
 
   const { rows: kpiRows } = await pool.query(kpiQuery, params);
 
+
+  const pagosPeriodoQuery = `
+    SELECT
+      COALESCE(SUM(p.monto),0) AS total_pagado_periodo
+    FROM pagos p
+    JOIN solicitudes s ON s.id = p.solicitud_id
+    WHERE
+    p.fecha_pago BETWEEN $1 AND $2
+    AND (
+      $3 = 0
+      OR s.empresa_id = ANY($4)
+    )
+    `;
+
+    const pagosParams =
+    empresaId === 0
+      ? [desde, hasta, empresaId, empresaIds]
+      : [desde, hasta, empresaId, [empresaId]];
+
+    const { rows: pagoRows } = await pool.query(
+      pagosPeriodoQuery,
+      pagosParams
+    );
+
+    const total_pagado_periodo =
+    Number(pagoRows[0]?.total_pagado_periodo || 0);
+
   const kpisRaw = kpiRows[0] || {};
 
   const kpis = {
     total_solicitado: Number(kpisRaw.total_solicitado || 0),
-    total_pagado: Number(kpisRaw.total_pagado || 0),
+    total_pagado: total_pagado_periodo,
     saldo_pendiente: Number(kpisRaw.saldo_pendiente || 0),
     total_solicitudes: Number(kpisRaw.total_solicitudes || 0),
   };

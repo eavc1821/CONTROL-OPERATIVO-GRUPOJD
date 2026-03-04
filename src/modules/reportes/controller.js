@@ -292,6 +292,7 @@ async function reporteRango(req, res, next) {
     res.json({
       ok: true,
       data: {
+        saldo_inicial: data.saldo_inicial || 0,
         kpis: data.kpis || {
           total_solicitado: 0,
           total_pagado: 0,
