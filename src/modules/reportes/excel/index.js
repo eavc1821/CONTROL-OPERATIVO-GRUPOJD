@@ -105,7 +105,7 @@ module.exports = async function buildExcel(data, res) {
   const saldoInicial = Number(data.saldo_inicial || 0);
   const comprasPeriodo = Number(data.kpis?.total_solicitado || 0);
   const pagosPeriodo = Number(data.kpis?.total_pagado || 0);
-  const saldoFinal = saldoInicial + comprasPeriodo - pagosPeriodo;
+  const saldoFinal = Number(data.kpis?.saldo_pendiente || 0);
 
   const kpis = [
     ["Saldo inicial", saldoInicial, "FDE68A"],
