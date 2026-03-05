@@ -580,6 +580,7 @@ async function getReporteRango({
 
   const { rows: kpiRows } = await pool.query(kpiQuery, params);
 
+//PAGOS DEL PERIODO
 
   const pagosPeriodoQuery = `
     SELECT
@@ -593,7 +594,7 @@ async function getReporteRango({
       OR s.empresa_id = ANY($4)
     )
     `;
-
+    
     const pagosParams =
     empresaId === 0
       ? [desde, hasta, empresaId, empresaIds]
@@ -606,6 +607,36 @@ async function getReporteRango({
 
     const total_pagado_periodo =
     Number(pagoRows[0]?.total_pagado_periodo || 0);
+
+
+//PAGOS DE MESES ANTERIORES
+
+const pagosMesAnteriorQuery = `
+SELECT
+  COALESCE(SUM(p.monto),0) AS pagos_mes_anterior
+FROM pagos p
+JOIN solicitudes s
+  ON s.id = p.solicitud_id
+WHERE
+p.fecha_pago BETWEEN $1 AND $2
+AND s.fecha_solicitud < $1
+AND (
+  $3 = 0
+  OR s.empresa_id = ANY($4)
+)
+`;
+
+const pagosMesAnteriorParams =
+empresaId === 0
+  ? [desde, hasta, empresaId, empresaIds]
+  : [desde, hasta, empresaId, [empresaId]];
+
+const { rows: pagosMesAnteriorRows } =
+await pool.query(pagosMesAnteriorQuery, pagosMesAnteriorParams);
+
+const pagos_mes_anterior =
+Number(pagosMesAnteriorRows[0]?.pagos_mes_anterior || 0);
+
 
   const kpisRaw = kpiRows[0] || {};
 
@@ -729,6 +760,7 @@ async function getReporteRango({
 
   return {
     saldo_inicial,
+    pagos_mes_anterior,
     kpis,
     providers,
     paymentTypes,
