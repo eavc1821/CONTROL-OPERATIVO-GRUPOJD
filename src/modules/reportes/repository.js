@@ -268,124 +268,212 @@ async function getProveedorPerfil(proveedorId, empresaId, filtros = {}) {
 
   const { desde, hasta } = rango;
 
-
+  // ======================================
   // 1️⃣ DATOS DEL PROVEEDOR
-  const proveedorQuery = `
-   SELECT
-    p.id,
-    p.nombre,
-    p.ruc,
-    p.cai,     
-    p.fecha_limite_emision,
-    p.rango_factura_desde,
-    p.rango_factura_hasta,         
-    p.contacto,
-    p.correo,
-    p.direccion,
-    p.created_at,
-    c.nombre AS categoria
-  FROM proveedores p
-  LEFT JOIN categorias c
-    ON c.id = p.categoria_id
-  WHERE p.id = $1;
+  // ======================================
 
+  const proveedorQuery = `
+    SELECT
+      p.id,
+      p.nombre,
+      p.ruc,
+      p.cai,
+      p.fecha_limite_emision,
+      p.rango_factura_desde,
+      p.rango_factura_hasta,
+      p.contacto,
+      p.correo,
+      p.direccion,
+      p.created_at,
+      c.nombre AS categoria
+    FROM proveedores p
+    LEFT JOIN categorias c
+      ON c.id = p.categoria_id
+    WHERE p.id = $1
   `;
 
-  const proveedorResult = await pool.query(proveedorQuery, [proveedorId]);
+  const proveedorResult =
+    await pool.query(proveedorQuery, [proveedorId]);
+
   const proveedor = proveedorResult.rows[0] || {};
 
-  // 2️⃣ KPIs DEL PROVEEDOR
-  const kpiQuery = `
+  // ======================================
+  // 2️⃣ SALDO INICIAL DEL PROVEEDOR
+  // ======================================
+
+  const saldoInicialQuery = `
     SELECT
-      COUNT(v.solicitud_id) AS total_solicitudes,
-      COALESCE(SUM(v.total_solicitud), 0) AS total_solicitado,
-      COALESCE(SUM(v.total_pagado), 0) AS total_pagado,
-      COALESCE(SUM(v.saldo_restante), 0) AS saldo_pendiente,
-      MAX(v.fecha_solicitud) AS ultimo_pago
+      COALESCE(SUM(v.saldo_restante),0) AS saldo_inicial
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
-    WHERE s.proveedor_id = $1
-      AND ($2 = 0 OR v.empresa_id = $2)
-      AND LOWER(s.estado) IN ('aprobada','pagada')
-      AND s.fecha_solicitud::date BETWEEN $3 AND $4;
+    WHERE
+      s.proveedor_id = $1
+      AND s.fecha_solicitud < $2
+      AND ($3 = 0 OR v.empresa_id = $3)
   `;
 
-  const kpiResult = await pool.query(kpiQuery, [proveedorId, empresaId, desde, hasta]);
-  const kpis = kpiResult.rows[0] || {};
+  const { rows: saldoRows } =
+    await pool.query(saldoInicialQuery,
+      [proveedorId, desde, empresaId]);
 
-  // 3️⃣ DETALLE DE SOLICITUDES
+  const saldo_inicial =
+    Number(saldoRows[0]?.saldo_inicial || 0);
+
+  // ======================================
+  // 3️⃣ COMPRAS DEL PERIODO
+  // ======================================
+
+  const comprasPeriodoQuery = `
+    SELECT
+      COALESCE(SUM(s.total),0) AS compras_periodo,
+      COUNT(*) AS total_solicitudes
+    FROM solicitudes s
+    WHERE
+      s.proveedor_id = $1
+      AND s.fecha_solicitud BETWEEN $2 AND $3
+      AND LOWER(s.estado) IN ('aprobada','pagada')
+      AND ($4 = 0 OR s.empresa_id = $4)
+  `;
+
+  const { rows: comprasRows } =
+    await pool.query(comprasPeriodoQuery,
+      [proveedorId, desde, hasta, empresaId]);
+
+  const compras_periodo =
+    Number(comprasRows[0]?.compras_periodo || 0);
+
+  const total_solicitudes =
+    Number(comprasRows[0]?.total_solicitudes || 0);
+
+  // ======================================
+  // 4️⃣ PAGOS DEL PERIODO
+  // ======================================
+
+  const pagosPeriodoQuery = `
+    SELECT
+      COALESCE(SUM(p.monto),0) AS pagos_periodo
+    FROM pagos p
+    JOIN solicitudes s
+      ON s.id = p.solicitud_id
+    WHERE
+      s.proveedor_id = $1
+      AND p.fecha_pago BETWEEN $2 AND $3
+      AND ($4 = 0 OR s.empresa_id = $4)
+  `;
+
+  const { rows: pagosRows } =
+    await pool.query(pagosPeriodoQuery,
+      [proveedorId, desde, hasta, empresaId]);
+
+  const pagos_periodo =
+    Number(pagosRows[0]?.pagos_periodo || 0);
+
+  // ======================================
+  // 5️⃣ SALDO FINAL DEL PERIODO
+  // ======================================
+
+  const saldoFinalQuery = `
+    SELECT
+      COALESCE(SUM(v.saldo_restante),0) AS saldo_final
+    FROM vw_total_pagado_por_solicitud v
+    JOIN solicitudes s
+      ON s.id = v.solicitud_id
+    WHERE
+      s.proveedor_id = $1
+      AND s.fecha_solicitud BETWEEN $2 AND $3
+      AND ($4 = 0 OR s.empresa_id = $4)
+  `;
+
+  const { rows: saldoFinalRows } =
+    await pool.query(saldoFinalQuery,
+      [proveedorId, desde, hasta, empresaId]);
+
+  const saldo_final =
+    Number(saldoFinalRows[0]?.saldo_final || 0);
+
+  // ======================================
+  // 6️⃣ DETALLE DE SOLICITUDES
+  // ======================================
+
   const detalleQuery = `
     SELECT
-        s.id AS solicitud_id,
-        s.correlativo,
-        p.nombre AS proveedor,
-        s.tipo_pago,
-        s.estado,
-        s.fecha_solicitud,
+      s.id AS solicitud_id,
+      s.correlativo,
+      p.nombre AS proveedor,
+      s.tipo_pago,
+      s.estado,
+      s.fecha_solicitud,
 
-        v.total_solicitud,
-        v.total_pagado,
-        v.saldo_restante AS saldo,
+      v.total_solicitud,
+      v.total_pagado,
+      v.saldo_restante AS saldo,
 
-        pa.id AS pago_id,
+      pa.id AS pago_id,
+      pa.monto,
+      pa.fecha_pago,
+      pa.numero_factura,
+      pa.fecha_factura,
+      pa.factura_url,
+
+      cf.banco,
+      cf.numero_cuenta,
+      cf.nombre AS cuenta_nombre
+
+    FROM solicitudes s
+
+    JOIN proveedores p
+      ON p.id = s.proveedor_id
+
+    JOIN vw_total_pagado_por_solicitud v
+      ON v.solicitud_id = s.id
+     AND v.empresa_id   = s.empresa_id
+
+    LEFT JOIN LATERAL (
+      SELECT
+        pa.id,
         pa.monto,
         pa.fecha_pago,
         pa.numero_factura,
         pa.fecha_factura,
         pa.factura_url,
+        pa.cuenta_financiera_id
+      FROM pagos pa
+      WHERE pa.solicitud_id = s.id
+        AND pa.empresa_id   = s.empresa_id
+      ORDER BY pa.fecha_pago DESC, pa.created_at DESC
+      LIMIT 1
+    ) pa ON true
 
-        cf.banco,
-        cf.numero_cuenta,
-        cf.nombre AS cuenta_nombre
+    LEFT JOIN cuentas_financieras cf
+      ON cf.id = pa.cuenta_financiera_id
 
-      FROM solicitudes s
+    WHERE
+      s.proveedor_id = $1
+      AND ($2 = 0 OR s.empresa_id = $2)
+      AND LOWER(s.estado) IN ('aprobada','pagada')
+      AND s.fecha_solicitud BETWEEN $3 AND $4
 
-      JOIN proveedores p 
-        ON p.id = s.proveedor_id
-
-      JOIN vw_total_pagado_por_solicitud v 
-        ON v.solicitud_id = s.id
-      AND v.empresa_id   = s.empresa_id
-
-      LEFT JOIN LATERAL (
-        SELECT
-          pa.id,
-          pa.monto,
-          pa.fecha_pago,
-          pa.numero_factura,
-          pa.fecha_factura,
-          pa.factura_url,
-          pa.cuenta_financiera_id
-        FROM pagos pa
-        WHERE pa.solicitud_id = s.id
-          AND pa.empresa_id   = s.empresa_id
-        ORDER BY pa.fecha_pago DESC, pa.created_at DESC
-        LIMIT 1
-      ) pa ON true
-
-      LEFT JOIN cuentas_financieras cf
-        ON cf.id = pa.cuenta_financiera_id
-
-      WHERE s.proveedor_id = $1
-        AND ($2 = 0 OR s.empresa_id = $2)
-        AND LOWER(s.estado) IN ('aprobada','pagada')
-        AND s.fecha_solicitud::date BETWEEN $3 AND $4
-
-      ORDER BY s.fecha_solicitud DESC;
+    ORDER BY s.fecha_solicitud DESC
   `;
 
-  const detalleResult = await pool.query(detalleQuery, [proveedorId, empresaId, desde, hasta]);
+  const { rows: detalle } =
+    await pool.query(detalleQuery,
+      [proveedorId, empresaId, desde, hasta]);
+
+  // ======================================
+  // RETURN FINAL
+  // ======================================
 
   return {
     proveedor,
     kpis: {
-      total_solicitudes: Number(kpis.total_solicitudes || 0),
-      total_solicitado: Number(kpis.total_solicitado || 0),
-      total_pagado: Number(kpis.total_pagado || 0),
-      saldo_pendiente: Number(kpis.saldo_pendiente || 0),
-      ultimo_pago: kpis.ultimo_pago,
+      saldo_inicial,
+      compras_periodo,
+      pagos_periodo,
+      saldo_final,
+      total_solicitudes
     },
-    detalle: detalleResult.rows,
+    detalle
   };
 }
 
