@@ -319,6 +319,57 @@ async function getProveedorPerfil(proveedorId, empresaId, filtros = {}) {
   const saldo_inicial =
     Number(saldoRows[0]?.saldo_inicial || 0);
 
+
+const saldoInicialHistoricoQuery = `
+SELECT
+COALESCE(SUM(s.total - COALESCE(pg.total_pagado,0)),0)
+AS saldo_inicial_historico
+FROM solicitudes s
+LEFT JOIN (
+  SELECT solicitud_id, SUM(monto) AS total_pagado
+  FROM pagos
+  WHERE fecha_pago < $2
+  GROUP BY solicitud_id
+) pg ON pg.solicitud_id = s.id
+WHERE
+s.proveedor_id = $1
+AND s.fecha_solicitud < $2
+AND ($3 = 0 OR s.empresa_id = $3)
+`;
+
+const { rows: saldoHistRows } =
+await pool.query(
+  saldoInicialHistoricoQuery,
+  [proveedorId, desde, empresaId]
+);
+
+const saldo_inicial_historico =
+Number(saldoHistRows[0]?.saldo_inicial_historico || 0);
+
+
+const pagosMesAnteriorQuery = `
+SELECT
+COALESCE(SUM(p.monto),0) AS pagos_mes_anterior
+FROM pagos p
+JOIN solicitudes s
+ON s.id = p.solicitud_id
+WHERE
+s.proveedor_id = $1
+AND p.fecha_pago BETWEEN $2 AND $3
+AND s.fecha_solicitud < $2
+AND ($4 = 0 OR s.empresa_id = $4)
+`;
+
+const { rows: pagosAnteriorRows } =
+await pool.query(
+  pagosMesAnteriorQuery,
+  [proveedorId, desde, hasta, empresaId]
+);
+
+const pagos_mes_anterior =
+Number(pagosAnteriorRows[0]?.pagos_mes_anterior || 0);
+
+
   // ======================================
   // 3️⃣ COMPRAS DEL PERIODO
   // ======================================
