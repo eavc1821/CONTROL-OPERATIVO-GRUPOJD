@@ -517,6 +517,8 @@ Number(pagosAnteriorRows[0]?.pagos_mes_anterior || 0);
 
   return {
     proveedor,
+    saldo_inicial_historico,
+    pagos_mes_anterior,
     kpis: {
       saldo_inicial,
       compras_periodo,
