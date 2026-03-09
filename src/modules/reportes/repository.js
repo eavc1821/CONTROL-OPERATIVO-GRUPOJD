@@ -319,7 +319,7 @@ async function getProveedorPerfil(proveedorId, empresaId, filtros = {}) {
   const saldo_inicial =
     Number(saldoRows[0]?.saldo_inicial || 0);
 
-
+//Historico de proveedores
 const saldoInicialHistoricoQuery = `
 SELECT
 COALESCE(SUM(s.total - COALESCE(pg.total_pagado,0)),0)
@@ -346,7 +346,7 @@ await pool.query(
 const saldo_inicial_historico =
 Number(saldoHistRows[0]?.saldo_inicial_historico || 0);
 
-
+//Conteo de pagos del periodo por proveedor
 const pagosMesAnteriorQuery = `
 SELECT
 COALESCE(SUM(p.monto),0) AS pagos_mes_anterior
