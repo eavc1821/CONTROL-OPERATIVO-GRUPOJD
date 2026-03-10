@@ -208,16 +208,17 @@ exportReporteRangoExcel: async (ctx) => {
   // 4️⃣ Generar Excel streaming
   // =====================================
   await excel(
-    {
-      empresaNombre,
-      desde: ctx.desde,
-      hasta: ctx.hasta,
-      filtros: ctx.filtros,
-      kpis: resumen.kpis, // 👈 KPIs reales
-      rowStream
-    },
-    ctx.res
-  );
+  {
+    empresaNombre,
+    desde: ctx.desde,
+    hasta: ctx.hasta,
+    filtros: ctx.filtros,
+    saldo_inicial: resumen.saldo_inicial,
+    kpis: resumen.kpis,
+    rowStream
+  },
+  ctx.res
+);
 },
 
 };
