@@ -738,11 +738,29 @@ async function getReporteRango({
   const kpiQuery = `
     SELECT
       COALESCE(SUM(v.total_solicitud),0) AS total_solicitado,
-      COALESCE(SUM(v.saldo_restante),0) AS saldo_pendiente,
+
+      COALESCE(SUM(
+        v.total_solicitud -
+        COALESCE(pg.total_pagado,0)
+      ),0) AS saldo_pendiente,
+
       COUNT(*) AS total_solicitudes
-    FROM vw_total_pagado_por_solicitud v
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    JOIN proveedores p ON p.id = v.proveedor_id
+
+    FROM solicitudes s
+    JOIN proveedores p ON p.id = s.proveedor_id
+
+    JOIN vw_total_pagado_por_solicitud v
+      ON v.solicitud_id = s.id
+
+    LEFT JOIN (
+      SELECT
+        solicitud_id,
+        SUM(monto) AS total_pagado
+      FROM pagos
+      WHERE fecha_pago <= $2
+      GROUP BY solicitud_id
+    ) pg ON pg.solicitud_id = s.id
+
     WHERE ${whereSQL}
   `;
 
