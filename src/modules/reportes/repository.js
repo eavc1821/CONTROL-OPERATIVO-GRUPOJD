@@ -737,34 +737,14 @@ async function getReporteRango({
 
   const kpiQuery = `
     SELECT
-        COALESCE(SUM(v.total_solicitud),0) AS total_solicitado,
-
-        COALESCE(SUM(
-          v.total_solicitud -
-          COALESCE(pg.total_pagado_hasta_corte,0)
-        ),0) AS saldo_pendiente,
-
-        COUNT(*) AS total_solicitudes
-
-      FROM vw_total_pagado_por_solicitud v
-
-      JOIN solicitudes s
-        ON s.id = v.solicitud_id
-
-      JOIN proveedores p
-        ON p.id = v.proveedor_id
-
-      LEFT JOIN (
-        SELECT
-          solicitud_id,
-          SUM(monto) AS total_pagado_hasta_corte
-        FROM pagos
-        WHERE fecha_pago <= $2
-        GROUP BY solicitud_id
-      ) pg
-        ON pg.solicitud_id = v.solicitud_id
-
-      WHERE ${whereSQL}
+      COALESCE(SUM(v.total_solicitud),0) AS total_solicitado,
+      COALESCE(SUM(v.total_pagado),0) AS total_pagado,
+      COALESCE(SUM(v.saldo_restante),0) AS saldo_pendiente,
+      COUNT(*) AS total_solicitudes
+    FROM vw_total_pagado_por_solicitud v
+    JOIN solicitudes s ON s.id = v.solicitud_id
+    JOIN proveedores p ON p.id = v.proveedor_id
+    WHERE ${whereSQL}
   `;
 
   const { rows: kpiRows } = await pool.query(kpiQuery, params);
