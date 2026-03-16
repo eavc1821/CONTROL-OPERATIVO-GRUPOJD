@@ -804,6 +804,45 @@ async function getReporteRango({
   const pagos_mes_anterior =
     Number(pagosMesAnteriorRows[0]?.pagos_mes_anterior || 0);
 
+
+  // ======================================
+  // 6️⃣ SALDO FINAL ESTATICO
+  // ======================================
+      const cierreMesQuery = `
+      SELECT
+      COALESCE(SUM(
+        s.total - COALESCE(pg.total_pagado,0)
+      ),0) AS cierre_mes
+      FROM solicitudes s
+
+      LEFT JOIN (
+        SELECT
+          solicitud_id,
+          SUM(monto) AS total_pagado
+        FROM pagos
+        WHERE fecha_pago <= $1
+        GROUP BY solicitud_id
+      ) pg ON pg.solicitud_id = s.id
+
+      WHERE
+      s.fecha_solicitud <= $1
+      AND LOWER(s.estado) IN ('aprobada','pagada')
+      AND (
+        $2 = 0
+        OR s.empresa_id = ANY($3)
+      )
+      `;
+
+      const { rows: cierreRows } = await pool.query(
+        cierreMesQuery,
+        [hasta, empresaId, empresaIds]
+      );
+
+      const cierre_mes =
+      Number(cierreRows[0]?.cierre_mes || 0);
+
+
+
   // ======================================
   // 6️⃣ KPIs FINALES
   // ======================================
@@ -926,10 +965,12 @@ async function getReporteRango({
 
   const { rows: cashflow } = await pool.query(cashflowQuery, params);
 
+  
   return {
     saldo_inicial,
     saldo_inicial_historico,
     pagos_mes_anterior,
+    cierre_mes,
     kpis,
     providers,
     paymentTypes,
