@@ -865,26 +865,37 @@ async function getReporteRango({
       s.tipo_pago,
       s.estado,
       s.fecha_solicitud,
+
       v.total_solicitud,
       v.total_pagado,
       v.saldo_restante AS saldo,
+
       v.numero_factura,
       v.fecha_factura,
+
+      ultimo_pago.fecha_pago,
+
       cf.banco,
       cf.numero_cuenta
+
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
     JOIN proveedores p ON p.id = v.proveedor_id
+
     LEFT JOIN LATERAL (
-      SELECT pa.cuenta_financiera_id
+      SELECT
+        pa.fecha_pago,
+        pa.cuenta_financiera_id
       FROM pagos pa
       WHERE pa.solicitud_id = s.id
         AND pa.empresa_id = s.empresa_id
       ORDER BY pa.fecha_pago DESC, pa.created_at DESC
       LIMIT 1
     ) ultimo_pago ON true
+
     LEFT JOIN cuentas_financieras cf
       ON cf.id = ultimo_pago.cuenta_financiera_id
+
     WHERE ${whereSQL}
     ORDER BY s.fecha_solicitud DESC
   `;
@@ -1141,28 +1152,40 @@ async function getReporteRangoStream({
       s.tipo_pago,
       s.estado,
       s.fecha_solicitud,
+
       v.total_solicitud,
+      pgs.monto AS monto_pago,
+      pgs.fecha_pago,
+
       v.total_pagado,
       v.saldo_restante AS saldo,
-      v.numero_factura,
-      v.fecha_factura,
+
+      pgs.numero_factura,
+      pgs.fecha_factura,
+
       cf.banco,
       cf.numero_cuenta
+
     FROM vw_total_pagado_por_solicitud v
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    JOIN proveedores p ON p.id = v.proveedor_id
-    LEFT JOIN LATERAL (
-      SELECT pa.cuenta_financiera_id
-      FROM pagos pa
-      WHERE pa.solicitud_id = s.id
-        AND pa.empresa_id = s.empresa_id
-      ORDER BY pa.fecha_pago DESC, pa.created_at DESC
-      LIMIT 1
-    ) ultimo_pago ON true
+
+    JOIN solicitudes s
+      ON s.id = v.solicitud_id
+
+    JOIN proveedores p
+      ON p.id = v.proveedor_id
+
+    LEFT JOIN pagos pgs
+      ON pgs.solicitud_id = s.id
+    AND pgs.empresa_id = s.empresa_id
+
     LEFT JOIN cuentas_financieras cf
-      ON cf.id = ultimo_pago.cuenta_financiera_id
+      ON cf.id = pgs.cuenta_financiera_id
+
     WHERE ${whereSQL}
-    ORDER BY s.fecha_solicitud DESC
+
+    ORDER BY
+      s.correlativo,
+      pgs.fecha_pago
   `;
 
   const stream = client.query(
