@@ -643,329 +643,211 @@ async function getReporteRango({
     throw new Error("Rango de fechas requerido");
   }
 
-  // ======================================
-  // BUILD WHERE DINÁMICO
-  // ======================================
-
-  const params = [];
-  let idx = 1;
-
-  const where = [];
-
-  if (empresaId === 0) {
-    where.push(`v.empresa_id = ANY($${idx++})`);
-    params.push(empresaIds);
-  } else {
-    where.push(`v.empresa_id = $${idx++}`);
-    params.push(empresaId);
-  }
-
-  where.push(`s.fecha_solicitud BETWEEN $${idx} AND $${idx + 1}`);
-  params.push(desde, hasta);
-  idx += 2;
-
-  if (estado && estado !== "Todos") {
-    where.push(`LOWER(s.estado) = LOWER($${idx++})`);
-    params.push(estado);
-  }
-
-  if (proveedor && proveedor !== "Todos") {
-    where.push(`p.nombre = $${idx++}`);
-    params.push(proveedor);
-  }
-
-  const whereSQL = where.join(" AND ");
-
-  // ======================================
-  // 1️⃣ SALDO INICIAL DINÁMICO
-  // ======================================
-
-  const saldoInicialQuery = `
-    SELECT
-      COALESCE(SUM(v.saldo_restante),0) AS saldo_inicial
-    FROM vw_total_pagado_por_solicitud v
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    WHERE
-      s.fecha_solicitud < $1
-      AND (
-        $2 = 0
-        OR v.empresa_id = ANY($3)
-      )
-  `;
-
-  const { rows: saldoRows } = await pool.query(
-    saldoInicialQuery,
-    [desde, empresaId, empresaIds]
-  );
-
-  const saldo_inicial = Number(saldoRows[0]?.saldo_inicial || 0);
-
-  // ======================================
-  // 2️⃣ SALDO INICIAL HISTÓRICO (ESTÁTICO)
-  // ======================================
-
-  const saldoInicialHistoricoQuery = `
-    SELECT
-      COALESCE(SUM(s.total - COALESCE(pg.total_pagado,0)),0)
-      AS saldo_inicial_historico
-    FROM solicitudes s
-    LEFT JOIN (
-      SELECT solicitud_id, SUM(monto) AS total_pagado
-      FROM pagos
-      WHERE fecha_pago < $1
-      GROUP BY solicitud_id
-    ) pg ON pg.solicitud_id = s.id
-    WHERE
-      s.fecha_solicitud < $1
-      AND (
-        $2 = 0
-        OR s.empresa_id = ANY($3)
-      )
-  `;
-
-  const { rows: saldoHistoricoRows } = await pool.query(
-    saldoInicialHistoricoQuery,
-    [desde, empresaId, empresaIds]
-  );
-
-  const saldo_inicial_historico =
-    Number(saldoHistoricoRows[0]?.saldo_inicial_historico || 0);
-
-  // ======================================
-  // 3️⃣ KPIs
-  // ======================================
-
-  const kpiQuery = `
-    SELECT
-      COALESCE(SUM(v.total_solicitud),0) AS total_solicitado,
-      COALESCE(SUM(v.total_pagado),0) AS total_pagado,
-      COALESCE(SUM(v.saldo_restante),0) AS saldo_pendiente,
-      COUNT(*) AS total_solicitudes
-    FROM vw_total_pagado_por_solicitud v
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    JOIN proveedores p ON p.id = v.proveedor_id
-    WHERE ${whereSQL}
-  `;
-
-  const { rows: kpiRows } = await pool.query(kpiQuery, params);
-  const kpisRaw = kpiRows[0] || {};
-
-  // ======================================
-  // 4️⃣ PAGOS DEL PERIODO
-  // ======================================
-
-  const pagosPeriodoQuery = `
-    SELECT
-      COALESCE(SUM(p.monto),0) AS total_pagado_periodo
-    FROM pagos p
-    JOIN solicitudes s ON s.id = p.solicitud_id
-    WHERE
-      p.fecha_pago BETWEEN $1 AND $2
-      AND (
-        $3 = 0
-        OR s.empresa_id = ANY($4)
-      )
-  `;
-
-  const pagosParams =
+  const empresaFiltro =
     empresaId === 0
-      ? [desde, hasta, empresaId, empresaIds]
-      : [desde, hasta, empresaId, [empresaId]];
+      ? `s.empresa_id = ANY($3)`
+      : `s.empresa_id = $3`;
 
-  const { rows: pagoRows } = await pool.query(
-    pagosPeriodoQuery,
-    pagosParams
+  const empresaParams =
+    empresaId === 0 ? empresaIds : empresaId;
+
+  // ======================================
+  // DATASET BASE (solo una vez)
+  // ======================================
+
+  const baseQuery = `
+  WITH pagos_hasta_corte AS (
+    SELECT
+      solicitud_id,
+      SUM(monto) AS total_pagado
+    FROM pagos
+    WHERE fecha_pago <= $2
+    GROUP BY solicitud_id
+  ),
+
+  pagos_periodo AS (
+    SELECT
+      solicitud_id,
+      SUM(monto) AS pagado_periodo
+    FROM pagos
+    WHERE fecha_pago BETWEEN $1 AND $2
+    GROUP BY solicitud_id
+  ),
+
+  base AS (
+    SELECT
+      s.id,
+      s.correlativo,
+      s.fecha_solicitud,
+      s.tipo_pago,
+      s.estado,
+      s.total,
+      s.empresa_id,
+      p.nombre AS proveedor,
+
+      COALESCE(ph.total_pagado,0) AS pagado_hasta_corte,
+      COALESCE(pp.pagado_periodo,0) AS pagado_periodo
+
+    FROM solicitudes s
+    JOIN proveedores p ON p.id = s.proveedor_id
+    LEFT JOIN pagos_hasta_corte ph ON ph.solicitud_id = s.id
+    LEFT JOIN pagos_periodo pp ON pp.solicitud_id = s.id
+
+    WHERE
+      s.fecha_solicitud <= $2
+      AND LOWER(s.estado) IN ('aprobada','pagada')
+      AND (${empresaFiltro})
+  )
+
+  SELECT * FROM base
+  `;
+
+  const { rows: base } = await pool.query(
+    baseQuery,
+    [desde, hasta, empresaParams]
   );
+
+  // ======================================
+  // SALDOS
+  // ======================================
+
+  const saldo_inicial = base
+    .filter(r => r.fecha_solicitud < desde)
+    .reduce((acc, r) =>
+      acc + (r.total - r.pagado_hasta_corte), 0);
+
+  const saldo_inicial_historico = saldo_inicial;
+
+  // ======================================
+  // KPIs
+  // ======================================
+
+  const periodo = base.filter(
+    r => r.fecha_solicitud >= desde && r.fecha_solicitud <= hasta
+  );
+
+  const total_solicitado =
+    periodo.reduce((a,r)=>a+r.total,0);
 
   const total_pagado_periodo =
-    Number(pagoRows[0]?.total_pagado_periodo || 0);
+    periodo.reduce((a,r)=>a+r.pagado_periodo,0);
 
-  // ======================================
-  // 5️⃣ PAGOS DE MESES ANTERIORES
-  // ======================================
+  const saldo_pendiente =
+    periodo.reduce((a,r)=>a+(r.total-r.pagado_hasta_corte),0);
 
-  const pagosMesAnteriorQuery = `
-    SELECT
-      COALESCE(SUM(p.monto),0) AS pagos_mes_anterior
-    FROM pagos p
-    JOIN solicitudes s ON s.id = p.solicitud_id
-    WHERE
-      p.fecha_pago BETWEEN $1 AND $2
-      AND s.fecha_solicitud < $1
-      AND (
-        $3 = 0
-        OR s.empresa_id = ANY($4)
-      )
-  `;
+  const total_solicitudes = periodo.length;
 
-  const { rows: pagosMesAnteriorRows } =
-    await pool.query(pagosMesAnteriorQuery, pagosParams);
+  const cierre_mes = base.reduce(
+    (a,r)=>a+(r.total-r.pagado_hasta_corte),0
+  );
 
   const pagos_mes_anterior =
-    Number(pagosMesAnteriorRows[0]?.pagos_mes_anterior || 0);
-
-
-  // ======================================
-  // 6️⃣ SALDO FINAL ESTATICO
-  // ======================================
-      const cierreMesQuery = `
-      SELECT
-      COALESCE(SUM(
-        s.total - COALESCE(pg.total_pagado,0)
-      ),0) AS cierre_mes
-      FROM solicitudes s
-
-      LEFT JOIN (
-        SELECT
-          solicitud_id,
-          SUM(monto) AS total_pagado
-        FROM pagos
-        WHERE fecha_pago <= $1
-        GROUP BY solicitud_id
-      ) pg ON pg.solicitud_id = s.id
-
-      WHERE
-      s.fecha_solicitud <= $1
-      AND LOWER(s.estado) IN ('aprobada','pagada')
-      AND (
-        $2 = 0
-        OR s.empresa_id = ANY($3)
-      )
-      `;
-
-      const { rows: cierreRows } = await pool.query(
-        cierreMesQuery,
-        [hasta, empresaId, empresaIds]
-      );
-
-      const cierre_mes =
-      Number(cierreRows[0]?.cierre_mes || 0);
-
-
-
-  // ======================================
-  // 6️⃣ KPIs FINALES
-  // ======================================
+    periodo
+      .filter(r=>r.fecha_solicitud < desde)
+      .reduce((a,r)=>a+r.pagado_periodo,0);
 
   const kpis = {
-    total_solicitado: Number(kpisRaw.total_solicitado || 0),
+    total_solicitado,
     total_pagado: total_pagado_periodo,
-    saldo_pendiente: Number(kpisRaw.saldo_pendiente || 0),
-    total_solicitudes: Number(kpisRaw.total_solicitudes || 0),
+    saldo_pendiente,
+    total_solicitudes
   };
 
   // ======================================
-  // 7️⃣ DETALLE
+  // DETALLE
   // ======================================
 
-  const detalleQuery = `
-    SELECT
-      s.correlativo,
-      p.nombre AS proveedor,
-      s.tipo_pago,
-      s.estado,
-      s.fecha_solicitud,
-      v.total_solicitud,
-      v.total_pagado,
-      v.saldo_restante AS saldo,
-      v.numero_factura,
-      v.fecha_factura,
-      cf.banco,
-      cf.numero_cuenta
-    FROM vw_total_pagado_por_solicitud v
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    JOIN proveedores p ON p.id = v.proveedor_id
-    LEFT JOIN LATERAL (
-      SELECT pa.cuenta_financiera_id
-      FROM pagos pa
-      WHERE pa.solicitud_id = s.id
-        AND pa.empresa_id = s.empresa_id
-      ORDER BY pa.fecha_pago DESC, pa.created_at DESC
-      LIMIT 1
-    ) ultimo_pago ON true
-    LEFT JOIN cuentas_financieras cf
-      ON cf.id = ultimo_pago.cuenta_financiera_id
-    WHERE ${whereSQL}
-    ORDER BY s.fecha_solicitud DESC
-  `;
-
-  const { rows: detalle } = await pool.query(detalleQuery, params);
+  const detalle = periodo.map(r => ({
+    correlativo: r.correlativo,
+    proveedor: r.proveedor,
+    tipo_pago: r.tipo_pago,
+    estado: r.estado,
+    fecha_solicitud: r.fecha_solicitud,
+    total_solicitud: r.total,
+    total_pagado: r.pagado_hasta_corte,
+    saldo: r.total - r.pagado_hasta_corte
+  }));
 
   // ======================================
-  // 8️⃣ TOP PROVEEDORES
+  // TOP PROVEEDORES
   // ======================================
 
-  const providersQuery = `
-    SELECT
-      p.nombre AS proveedor,
-      SUM(v.total_solicitud) AS total_compras
-    FROM vw_total_pagado_por_solicitud v
-    JOIN proveedores p ON p.id = v.proveedor_id
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    WHERE ${whereSQL}
-    GROUP BY p.nombre
-    ORDER BY total_compras DESC
-    LIMIT 10
-  `;
+  const providerMap = {};
 
-  const { rows: providers } = await pool.query(providersQuery, params);
+  periodo.forEach(r=>{
+    providerMap[r.proveedor] =
+      (providerMap[r.proveedor]||0)+r.total;
+  });
 
-  // ======================================
-  // 9️⃣ TIPOS DE PAGO
-  // ======================================
-
-  const tipoPagoQuery = `
-    SELECT
-      s.tipo_pago,
-      SUM(v.total_solicitud) AS total_solicitado,
-      SUM(v.total_pagado) AS total_pagado
-    FROM vw_total_pagado_por_solicitud v
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    JOIN proveedores p ON p.id = v.proveedor_id
-    WHERE ${whereSQL}
-    GROUP BY s.tipo_pago
-    ORDER BY s.tipo_pago
-  `;
-
-  const { rows: paymentTypes } = await pool.query(tipoPagoQuery, params);
+  const providers = Object.entries(providerMap)
+    .map(([proveedor,total_compras])=>({
+      proveedor,
+      total_compras
+    }))
+    .sort((a,b)=>b.total_compras-a.total_compras)
+    .slice(0,10);
 
   // ======================================
-  // 🔟 ESTADOS
+  // TIPOS DE PAGO
   // ======================================
 
-  const stateQuery = `
-    SELECT
-      s.estado,
-      COUNT(*) AS cnt
-    FROM vw_total_pagado_por_solicitud v
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    JOIN proveedores p ON p.id = v.proveedor_id
-    WHERE ${whereSQL}
-    GROUP BY s.estado
-  `;
+  const tipoMap = {};
 
-  const { rows: states } = await pool.query(stateQuery, params);
+  periodo.forEach(r=>{
+    if(!tipoMap[r.tipo_pago])
+      tipoMap[r.tipo_pago]={solicitado:0,pagado:0};
+
+    tipoMap[r.tipo_pago].solicitado+=r.total;
+    tipoMap[r.tipo_pago].pagado+=r.pagado_hasta_corte;
+  });
+
+  const paymentTypes =
+    Object.entries(tipoMap)
+      .map(([tipo_pago,v])=>({
+        tipo_pago,
+        total_solicitado:v.solicitado,
+        total_pagado:v.pagado
+      }));
 
   // ======================================
-  // 11️⃣ CASHFLOW
+  // ESTADOS
   // ======================================
 
-  const cashflowQuery = `
-    SELECT
-      s.fecha_solicitud AS fecha,
-      SUM(v.total_solicitud) AS total_solicitud,
-      SUM(v.total_pagado) AS total_pagado
-    FROM vw_total_pagado_por_solicitud v
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    JOIN proveedores p ON p.id = v.proveedor_id
-    WHERE ${whereSQL}
-    GROUP BY s.fecha_solicitud
-    ORDER BY s.fecha_solicitud
-  `;
+  const stateMap={};
 
-  const { rows: cashflow } = await pool.query(cashflowQuery, params);
+  periodo.forEach(r=>{
+    stateMap[r.estado]=(stateMap[r.estado]||0)+1;
+  });
 
-  
+  const states =
+    Object.entries(stateMap)
+      .map(([estado,cnt])=>({estado,cnt}));
+
+  // ======================================
+  // CASHFLOW
+  // ======================================
+
+  const cashMap={};
+
+  periodo.forEach(r=>{
+    const d=r.fecha_solicitud;
+
+    if(!cashMap[d])
+      cashMap[d]={sol:0,pag:0};
+
+    cashMap[d].sol+=r.total;
+    cashMap[d].pag+=r.pagado_hasta_corte;
+  });
+
+  const cashflow =
+    Object.entries(cashMap)
+      .map(([fecha,v])=>({
+        fecha,
+        total_solicitud:v.sol,
+        total_pagado:v.pag
+      }))
+      .sort((a,b)=>new Date(a.fecha)-new Date(b.fecha));
+
   return {
     saldo_inicial,
     saldo_inicial_historico,
