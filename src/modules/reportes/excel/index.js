@@ -88,8 +88,10 @@ module.exports = async function buildExcel(data, res) {
   let currentRow = 6;
 
   const addInfoRow = (text, color) => {
-    const row = ws.addRow([text]);
-    ws.mergeCells(`A${row.number}:M${row.number}`);
+    const row = ws.addRow([
+        text,
+        "", "", "", "", "", "", "", "", "", "", "", ""
+      ]);
 
     const cell = ws.getCell(`A${row.number}`);
     cell.fill = {
@@ -193,9 +195,9 @@ module.exports = async function buildExcel(data, res) {
     const row = ws.addRow([
       d.correlativo,
       d.proveedor,
-      formatDDMMYY(d.fecha_solicitud),
-      formatDDMMYY(d.fecha_factura),
-      formatDDMMYY(d.fecha_pago), // 👈 NUEVO
+      formatDDMMYY(d.fecha_solicitud || null),
+      formatDDMMYY(d.fecha_factura || null),
+      formatDDMMYY(d.fecha_pago || null), // 👈 NUEVO
       d.numero_factura || "-",
       d.tipo_pago,
       d.banco,
