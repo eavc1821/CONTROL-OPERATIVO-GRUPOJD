@@ -103,7 +103,7 @@ if (labels.length > 0) {
   };
 
   cell.alignment = {
-    horizontal: "left",
+    horizontal: "center",
     vertical: "middle"
   };
 
