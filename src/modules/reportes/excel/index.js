@@ -65,46 +65,98 @@ module.exports = async function buildExcel(data, res) {
   ws.getCell("A5").alignment = { horizontal: "center" };
 
   // =========================
-  // LABELS INFORMATIVOS
-  // =========================
-  let rowIndex = 6;
+// MINI KPIs (HORIZONTALES)
+// =========================
 
-  const addLabel = (text, color) => {
-    ws.mergeCells(`A${rowIndex}:M${rowIndex}`);
-    const cell = ws.getCell(`A${rowIndex}`);
-    cell.value = text;
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: color } };
-    cell.font = { bold: true };
-    rowIndex++;
-  };
+const saldoInicialHist = Number(data.saldo_inicial_historico || 0);
+const pagosMesAnterior = Number(data.pagos_mes_anterior || 0);
+const cierreMes = Number(data.cierre_mes || 0);
 
-  const saldoInicialHist = Number(data.saldo_inicial_historico || 0);
-  const pagosMesAnterior = Number(data.pagos_mes_anterior || 0);
-  const cierreMes = Number(data.cierre_mes || 0);
+const miniKpis = [
+  {
+    title: "Saldo inicial",
+    value: saldoInicialHist,
+    color: "F1F5F9"
+  },
+  {
+    title: "Pagos anteriores",
+    value: pagosMesAnterior,
+    color: "DBEAFE"
+  },
+  {
+    title: "Cierre del mes",
+    value: cierreMes,
+    color: "EDE9FE"
+  }
+].filter(k => k.value > 0); // 👈 solo mostrar si hay valor
 
-  if (saldoInicialHist > 0) {
-  addLabel(
-    `📊 Saldo inicial del periodo: L. ${saldoInicialHist.toLocaleString()}`,
-    "F1F5F9"
-  );
+if (miniKpis.length > 0) {
+
+  let startCol = 1;
+
+  miniKpis.forEach(k => {
+
+    // 🔹 TÍTULO
+    ws.mergeCells(rowIndex, startCol, rowIndex, startCol + 3);
+
+    const titleCell = ws.getCell(rowIndex, startCol);
+
+    titleCell.value = k.title.toUpperCase();
+    titleCell.font = {
+      bold: true,
+      size: 11,
+      color: { argb: "475569" }
+    };
+
+    titleCell.alignment = {
+      horizontal: "center",
+      vertical: "middle"
+    };
+
+    titleCell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: k.color }
+    };
+
+    // 🔹 VALOR
+    ws.mergeCells(rowIndex + 1, startCol, rowIndex + 1, startCol + 3);
+
+    const valueCell = ws.getCell(rowIndex + 1, startCol);
+
+    valueCell.value = `L. ${k.value.toLocaleString()}`;
+    valueCell.font = {
+      bold: true,
+      size: 14,
+      color: { argb: "0F172A" }
+    };
+
+    valueCell.alignment = {
+      horizontal: "center",
+      vertical: "middle"
+    };
+
+    valueCell.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: k.color }
+    };
+
+    // 🔹 BORDES (tipo card)
+    [titleCell, valueCell].forEach(cell => {
+      cell.border = {
+        top: { style: "thin", color: { argb: "CBD5E1" } },
+        left: { style: "thin", color: { argb: "CBD5E1" } },
+        bottom: { style: "thin", color: { argb: "CBD5E1" } },
+        right: { style: "thin", color: { argb: "CBD5E1" } }
+      };
+    });
+
+    startCol += 4;
+  });
+
+  rowIndex += 3; // espacio después
 }
-
-if (pagosMesAnterior > 0) {
-  addLabel(
-    `ℹ️ Pagos de meses anteriores: L. ${pagosMesAnterior.toLocaleString()}`,
-    "DBEAFE"
-  );
-}
-
-if (cierreMes > 0) {
-  addLabel(
-    `📊 Cierre del mes: L. ${cierreMes.toLocaleString()}`,
-    "EDE9FE"
-  );
-}
-
-  rowIndex++;
-
   // =========================
   // KPIs
   // =========================
