@@ -68,7 +68,7 @@ module.exports = async function buildExcel(data, res) {
 // MINI KPIs (HORIZONTALES)
 // =========================
 
-let rowIndex;
+let rowIndex = 6;
 
 const saldoInicialHist = Number(data.saldo_inicial_historico || 0);
 const pagosMesAnterior = Number(data.pagos_mes_anterior || 0);
@@ -94,9 +94,10 @@ const miniKpis = [
 
 if (miniKpis.length > 0) {
 
-  let startCol = 1;
+  
+  miniKpis.slice(0, 3).forEach((k, i) => {
 
-  miniKpis.forEach(k => {
+    const startCol = (i * 4) + 1;
 
     // 🔹 TÍTULO
     ws.mergeCells(rowIndex, startCol, rowIndex, startCol + 3);
@@ -154,7 +155,6 @@ if (miniKpis.length > 0) {
       };
     });
 
-    startCol += 4;
   });
 
   rowIndex += 3; // espacio después
