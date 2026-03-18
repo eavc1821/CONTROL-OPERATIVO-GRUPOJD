@@ -38,10 +38,13 @@ module.exports = async function buildExcel(data, res) {
   ws.mergeCells("A3:M3");
   ws.getCell("A3").value =
     `Periodo: ${formatDDMMYY(data.desde)} - ${formatDDMMYY(data.hasta)}`;
+  ws.getCell("A3").alignment = { horizontal: "center" };
+
 
   ws.mergeCells("A4:M4");
   ws.getCell("A4").value =
     `Generado: ${formatDDMMYY(new Date())}`;
+  ws.getCell("A4").alignment = { horizontal: "center" };
 
   // =========================
   // FILTROS
@@ -59,6 +62,7 @@ module.exports = async function buildExcel(data, res) {
   ws.mergeCells("A5:M5");
   ws.getCell("A5").value =
     filtros.length ? `Filtros → ${filtros.join(" | ")}` : "Filtros → Todos";
+  ws.getCell("A5").alignment = { horizontal: "center" };
 
   // =========================
   // LABELS INFORMATIVOS
@@ -74,26 +78,30 @@ module.exports = async function buildExcel(data, res) {
     rowIndex++;
   };
 
-  if (data.saldo_inicial_historico > 0) {
-    addLabel(
-      `📊 Saldo inicial del periodo: L. ${data.saldo_inicial_historico.toLocaleString()}`,
-      "F1F5F9"
-    );
-  }
+  const saldoInicialHist = Number(data.saldo_inicial_historico || 0);
+  const pagosMesAnterior = Number(data.pagos_mes_anterior || 0);
+  const cierreMes = Number(data.cierre_mes || 0);
 
-  if (data.pagos_mes_anterior > 0) {
-    addLabel(
-      `ℹ️ Pagos de meses anteriores: L. ${data.pagos_mes_anterior.toLocaleString()}`,
-      "DBEAFE"
-    );
-  }
+  if (saldoInicialHist > 0) {
+  addLabel(
+    `📊 Saldo inicial del periodo: L. ${saldoInicialHist.toLocaleString()}`,
+    "F1F5F9"
+  );
+}
 
-  if (data.cierre_mes > 0) {
-    addLabel(
-      `📊 Cierre del mes: L. ${data.cierre_mes.toLocaleString()}`,
-      "EDE9FE"
-    );
-  }
+if (pagosMesAnterior > 0) {
+  addLabel(
+    `ℹ️ Pagos de meses anteriores: L. ${pagosMesAnterior.toLocaleString()}`,
+    "DBEAFE"
+  );
+}
+
+if (cierreMes > 0) {
+  addLabel(
+    `📊 Cierre del mes: L. ${cierreMes.toLocaleString()}`,
+    "EDE9FE"
+  );
+}
 
   rowIndex++;
 
