@@ -68,6 +68,8 @@ module.exports = async function buildExcel(data, res) {
 // MINI KPIs (HORIZONTALES)
 // =========================
 
+let rowIndex;
+
 const saldoInicialHist = Number(data.saldo_inicial_historico || 0);
 const pagosMesAnterior = Number(data.pagos_mes_anterior || 0);
 const cierreMes = Number(data.cierre_mes || 0);
