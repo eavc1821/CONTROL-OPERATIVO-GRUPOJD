@@ -687,5 +687,4 @@ module.exports =
   listPagosBySolicitud,
   registrarPago,
   getPagoById,
-
 };

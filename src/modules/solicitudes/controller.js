@@ -19,13 +19,21 @@ async function list(req, res, next) {
     const ctx = {
       empresaId: req.empresa_id,
       usuarioId: req.usuario?.id
-      
     };
 
-    const rows = await service.list(ctx, req.query);
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+
+    const result = await service.list(ctx, { page, limit });
+
     res.json({ 
       ok: true, 
-      data: rows,
+      data: result.data,
+      meta: {
+        total: result.total,
+        totalPages: result.totalPages,
+        page: result.page
+      },
       empresaContexto: {
         id: req.empresa_id,
         tipo: req.empresaTipo
