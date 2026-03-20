@@ -90,8 +90,41 @@ async function update(id, { proveedor_id, total, tipo_pago, descripcion, notas, 
 }
 
 
-async function findAll(empresaId, { page = 1, limit = 10 }) {
+async function findAll(empresaId, {
+  page = 1,
+  limit = 10,
+  search,
+  estado,
+  categoria
+}) {
   const offset = (page - 1) * limit;
+
+  const conditions = [`s.empresa_id = $1`];
+  const params = [empresaId];
+  let idx = 2;
+
+  // 🔎 SEARCH (correlativo)
+  if (search) {
+    conditions.push(`s.correlativo ILIKE $${idx}`);
+    params.push(`%${search}%`);
+    idx++;
+  }
+
+  // 📌 ESTADO
+  if (estado) {
+    conditions.push(`LOWER(s.estado) = LOWER($${idx})`);
+    params.push(estado);
+    idx++;
+  }
+
+  // 📌 CATEGORÍA
+  if (categoria) {
+    conditions.push(`s.categoria_id = $${idx}`);
+    params.push(Number(categoria));
+    idx++;
+  }
+
+  const whereClause = conditions.join(" AND ");
 
   const q = `
     SELECT
@@ -122,20 +155,22 @@ async function findAll(empresaId, { page = 1, limit = 10 }) {
       LIMIT 1
     ) ult_pago ON true
 
-    WHERE s.empresa_id = $1
+    WHERE ${whereClause}
     ORDER BY s.solicitud_id DESC
-    LIMIT $2 OFFSET $3;
+    LIMIT $${idx} OFFSET $${idx + 1};
   `;
+
+  params.push(limit, offset);
 
   const countQuery = `
     SELECT COUNT(*) AS total
-    FROM vw_resumen_solicitudes
-    WHERE empresa_id = $1
+    FROM vw_resumen_solicitudes s
+    WHERE ${whereClause};
   `;
 
   const [dataResult, countResult] = await Promise.all([
-    pool.query(q, [empresaId, limit, offset]),
-    pool.query(countQuery, [empresaId]),
+    pool.query(q, params),
+    pool.query(countQuery, params.slice(0, idx - 1)),
   ]);
 
   const total = Number(countResult.rows[0].total);
@@ -148,9 +183,6 @@ async function findAll(empresaId, { page = 1, limit = 10 }) {
     page,
   };
 }
-
-
-
 
 async function findById(empresaId, id) {
   const q = `
