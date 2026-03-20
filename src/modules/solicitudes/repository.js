@@ -184,6 +184,7 @@ async function findAll(empresaId, {
   };
 }
 
+
 async function findById(empresaId, id) {
   const q = `
     SELECT
