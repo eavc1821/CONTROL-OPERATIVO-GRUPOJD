@@ -295,6 +295,7 @@ async function reporteRango(req, res, next) {
         saldo_inicial: data.saldo_inicial || 0,
         pagos_mes_anterior: data.pagos_mes_anterior || 0,
         saldo_inicial_historico: data.saldo_inicial_historico || 0,
+        cierre_mes: data.cierre_mes || 0,
         kpis: data.kpis || {
           total_solicitado: 0,
           total_pagado: 0,

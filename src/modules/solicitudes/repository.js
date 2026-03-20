@@ -90,7 +90,9 @@ async function update(id, { proveedor_id, total, tipo_pago, descripcion, notas, 
 }
 
 
-async function findAll(empresaId) {
+async function findAll(empresaId, { page = 1, limit = 10 }) {
+  const offset = (page - 1) * limit;
+
   const q = `
     SELECT
       s.solicitud_id AS id,
@@ -122,11 +124,29 @@ async function findAll(empresaId) {
 
     WHERE s.empresa_id = $1
     ORDER BY s.solicitud_id DESC
-    LIMIT 100;
+    LIMIT $2 OFFSET $3;
   `;
 
-  const { rows } = await pool.query(q, [empresaId]);
-  return rows;
+  const countQuery = `
+    SELECT COUNT(*) AS total
+    FROM vw_resumen_solicitudes
+    WHERE empresa_id = $1
+  `;
+
+  const [dataResult, countResult] = await Promise.all([
+    pool.query(q, [empresaId, limit, offset]),
+    pool.query(countQuery, [empresaId]),
+  ]);
+
+  const total = Number(countResult.rows[0].total);
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data: dataResult.rows,
+    total,
+    totalPages,
+    page,
+  };
 }
 
 

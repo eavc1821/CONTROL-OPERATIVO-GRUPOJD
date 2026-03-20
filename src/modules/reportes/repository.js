@@ -738,6 +738,7 @@ async function getReporteRango({
   const kpiQuery = `
     SELECT
       COALESCE(SUM(v.total_solicitud),0) AS total_solicitado,
+      COALESCE(SUM(v.total_pagado),0) AS total_pagado,
       COALESCE(SUM(v.saldo_restante),0) AS saldo_pendiente,
       COUNT(*) AS total_solicitudes
     FROM vw_total_pagado_por_solicitud v
@@ -803,6 +804,45 @@ async function getReporteRango({
   const pagos_mes_anterior =
     Number(pagosMesAnteriorRows[0]?.pagos_mes_anterior || 0);
 
+
+  // ======================================
+  // 6️⃣ SALDO FINAL ESTATICO
+  // ======================================
+      const cierreMesQuery = `
+      SELECT
+      COALESCE(SUM(
+        s.total - COALESCE(pg.total_pagado,0)
+      ),0) AS cierre_mes
+      FROM solicitudes s
+
+      LEFT JOIN (
+        SELECT
+          solicitud_id,
+          SUM(monto) AS total_pagado
+        FROM pagos
+        WHERE fecha_pago <= $1
+        GROUP BY solicitud_id
+      ) pg ON pg.solicitud_id = s.id
+
+      WHERE
+      s.fecha_solicitud <= $1
+      AND LOWER(s.estado) IN ('aprobada','pagada')
+      AND (
+        $2 = 0
+        OR s.empresa_id = ANY($3)
+      )
+      `;
+
+      const { rows: cierreRows } = await pool.query(
+        cierreMesQuery,
+        [hasta, empresaId, empresaIds]
+      );
+
+      const cierre_mes =
+      Number(cierreRows[0]?.cierre_mes || 0);
+
+
+
   // ======================================
   // 6️⃣ KPIs FINALES
   // ======================================
@@ -825,26 +865,37 @@ async function getReporteRango({
       s.tipo_pago,
       s.estado,
       s.fecha_solicitud,
+
       v.total_solicitud,
       v.total_pagado,
       v.saldo_restante AS saldo,
+
       v.numero_factura,
       v.fecha_factura,
+
+      ultimo_pago.fecha_pago,
+
       cf.banco,
       cf.numero_cuenta
+
     FROM vw_total_pagado_por_solicitud v
     JOIN solicitudes s ON s.id = v.solicitud_id
     JOIN proveedores p ON p.id = v.proveedor_id
+
     LEFT JOIN LATERAL (
-      SELECT pa.cuenta_financiera_id
+      SELECT
+        pa.fecha_pago,
+        pa.cuenta_financiera_id
       FROM pagos pa
       WHERE pa.solicitud_id = s.id
         AND pa.empresa_id = s.empresa_id
       ORDER BY pa.fecha_pago DESC, pa.created_at DESC
       LIMIT 1
     ) ultimo_pago ON true
+
     LEFT JOIN cuentas_financieras cf
       ON cf.id = ultimo_pago.cuenta_financiera_id
+
     WHERE ${whereSQL}
     ORDER BY s.fecha_solicitud DESC
   `;
@@ -925,10 +976,12 @@ async function getReporteRango({
 
   const { rows: cashflow } = await pool.query(cashflowQuery, params);
 
+  
   return {
     saldo_inicial,
     saldo_inicial_historico,
     pagos_mes_anterior,
+    cierre_mes,
     kpis,
     providers,
     paymentTypes,
@@ -1099,28 +1152,40 @@ async function getReporteRangoStream({
       s.tipo_pago,
       s.estado,
       s.fecha_solicitud,
+
       v.total_solicitud,
+      pgs.monto AS monto_pago,
+      pgs.fecha_pago,
+
       v.total_pagado,
       v.saldo_restante AS saldo,
-      v.numero_factura,
-      v.fecha_factura,
+
+      pgs.numero_factura,
+      pgs.fecha_factura,
+
       cf.banco,
       cf.numero_cuenta
+
     FROM vw_total_pagado_por_solicitud v
-    JOIN solicitudes s ON s.id = v.solicitud_id
-    JOIN proveedores p ON p.id = v.proveedor_id
-    LEFT JOIN LATERAL (
-      SELECT pa.cuenta_financiera_id
-      FROM pagos pa
-      WHERE pa.solicitud_id = s.id
-        AND pa.empresa_id = s.empresa_id
-      ORDER BY pa.fecha_pago DESC, pa.created_at DESC
-      LIMIT 1
-    ) ultimo_pago ON true
+
+    JOIN solicitudes s
+      ON s.id = v.solicitud_id
+
+    JOIN proveedores p
+      ON p.id = v.proveedor_id
+
+    LEFT JOIN pagos pgs
+      ON pgs.solicitud_id = s.id
+    AND pgs.empresa_id = s.empresa_id
+
     LEFT JOIN cuentas_financieras cf
-      ON cf.id = ultimo_pago.cuenta_financiera_id
+      ON cf.id = pgs.cuenta_financiera_id
+
     WHERE ${whereSQL}
-    ORDER BY s.fecha_solicitud DESC
+
+    ORDER BY
+      s.correlativo,
+      pgs.fecha_pago
   `;
 
   const stream = client.query(

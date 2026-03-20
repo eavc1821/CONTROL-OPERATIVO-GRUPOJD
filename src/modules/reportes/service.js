@@ -214,6 +214,11 @@ exportReporteRangoExcel: async (ctx) => {
     hasta: ctx.hasta,
     filtros: ctx.filtros,
     saldo_inicial: resumen.saldo_inicial,
+
+    saldo_inicial_historico: resumen.saldo_inicial_historico,
+    pagos_mes_anterior: resumen.pagos_mes_anterior,
+    cierre_mes: resumen.cierre_mes,
+    
     kpis: resumen.kpis,
     rowStream
   },
