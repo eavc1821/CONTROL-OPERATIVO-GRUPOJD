@@ -391,8 +391,6 @@ async function findAprobadoresByEmpresaTx(client, empresaId) {
 }
 
 
-
-
 module.exports = {
   createSolicitud,
   createSolicitudTx,
