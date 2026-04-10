@@ -96,14 +96,16 @@ module.exports = async (req, res, next) => {
   req.empresa_id = empresaId;
   req.empresaNombre = empresa.nombre;
 
-if (empresa.parent_id) {
-  // EMPRESA HIJA
+const childIds = collectEmpresaIds(empresa);
+
+if (childIds.length === 0) {
+  // EMPRESA HIJA / hoja operativa
   req.empresaTipo = "HIJA";
   req.empresa_ids = [empresaId];
 } else {
   // EMPRESA PADRE
   req.empresaTipo = "PADRE";
-  req.empresa_ids = [empresaId, ...collectEmpresaIds(empresa)];
+  req.empresa_ids = [empresaId, ...childIds];
 }
 
 req.empresaModo = "EMPRESA";
