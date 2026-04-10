@@ -4,7 +4,7 @@ const repo = require("./repository");
 async function create(ctx, payload) {
   if (
   ctx.empresaTipo !== "HIJA" ||
-  !ctx.empresaNombre?.includes("Transporte")
+  !ctx.esHijaTransporteJD
 ) {
   throw new Error(
     "Este ingreso solo aplica para empresas hijas de Transporte Especializado JD"

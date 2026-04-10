@@ -5,7 +5,7 @@ async function create(req, res, next) {
     const ctx = {
       empresaId: req.empresa_id,
       empresaTipo: req.empresaTipo,
-      empresaNombre: req.empresaNombre,
+      esHijaTransporteJD: req.esHijaTransporteJD,
       usuarioId: req.usuario?.id,
     };
 

@@ -99,13 +99,17 @@ module.exports = async (req, res, next) => {
 const childIds = collectEmpresaIds(empresa);
 
 if (childIds.length === 0) {
-  // EMPRESA HIJA / hoja operativa
   req.empresaTipo = "HIJA";
   req.empresa_ids = [empresaId];
+
+  // validar si pertenece al grupo JD
+  req.esHijaTransporteJD =
+    empresa.parent_nombre === "Transporte Especializado JD" ||
+    empresa.parent_id === 1; // usa aquí el id real del padre JD
 } else {
-  // EMPRESA PADRE
   req.empresaTipo = "PADRE";
   req.empresa_ids = [empresaId, ...childIds];
+  req.esHijaTransporteJD = false;
 }
 
 req.empresaModo = "EMPRESA";
