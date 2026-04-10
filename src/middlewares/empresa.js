@@ -104,8 +104,7 @@ if (childIds.length === 0) {
 
   // validar si pertenece al grupo JD
   req.esHijaTransporteJD =
-    empresa.parent_nombre === "Transporte Especializado JD" ||
-    empresa.parent_id === 1; // usa aquí el id real del padre JD
+    Number(empresa.parent_id) === 6;
 } else {
   req.empresaTipo = "PADRE";
   req.empresa_ids = [empresaId, ...childIds];
