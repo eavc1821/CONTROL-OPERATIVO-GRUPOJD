@@ -2,11 +2,14 @@ const pool = require("../../core/db");
 const repo = require("./repository");
 
 async function create(ctx, payload) {
-  if (ctx.empresaId !== 6) {
-    throw new Error(
-      "Este tipo de ingreso solo aplica para Transporte Especializado JD"
-    );
-  }
+  if (
+  ctx.empresaTipo !== "HIJA" ||
+  !ctx.empresaNombre?.includes("Transporte")
+) {
+  throw new Error(
+    "Este ingreso solo aplica para empresas hijas de Transporte Especializado JD"
+  );
+}
 
   const client = await pool.connect();
 
