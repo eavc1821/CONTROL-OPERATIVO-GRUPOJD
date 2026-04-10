@@ -18,11 +18,7 @@ async function create(ctx, payload) {
 
     const year = new Date().getFullYear();
 
-    const nextCorrelativo = await repo.getNextCorrelativoTx(
-      client,
-      ctx.empresaId
-    );
-
+    const nextCorrelativo = await repo.getNextCorrelativoTx(client);
     const correlativo = `ING-${year}-${nextCorrelativo}`;
 
     const ingreso = await repo.createIngresoTx(client, {

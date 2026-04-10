@@ -119,16 +119,15 @@ async function getIngresosPaginated({
 }
 
 
-async function getNextCorrelativoTx(client, empresaId) {
+async function getNextCorrelativoTx(client) {
   const q = `
     SELECT COUNT(*)::int + 1 AS next_number
     FROM ingresos
-    WHERE empresa_id = $1
+    WHERE tipo_ingreso = 'TRANSPORTE'
   `;
 
-  const { rows } = await client.query(q, [empresaId]);
-
-  return String(rows[0].next_number).padStart(6, "0");
+  const { rows } = await client.query(q);
+  return String(rows[0].next_number).padStart(7, "0");
 }
 
 module.exports = {
