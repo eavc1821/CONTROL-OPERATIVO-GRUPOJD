@@ -20,16 +20,15 @@ async function createIngresoTx(client, data) {
 }
 
 
-async function getNextNumeroViajeTx(client, empresaId, cisternaId) {
+async function getNextNumeroViajeTx(client, empresaId) {
   const q = `
     SELECT COALESCE(MAX(it.numero_viaje), 0) + 1 AS next_viaje
     FROM ingresos_transporte it
     JOIN ingresos i ON i.id = it.ingreso_id
     WHERE i.empresa_id = $1
-      AND it.cisterna_id = $2
   `;
 
-  const { rows } = await client.query(q, [empresaId, cisternaId]);
+  const { rows } = await client.query(q, [empresaId]);
   return Number(rows[0].next_viaje);
 }
 
@@ -119,9 +118,23 @@ async function getIngresosPaginated({
   };
 }
 
+
+async function getNextCorrelativoTx(client, empresaId) {
+  const q = `
+    SELECT COUNT(*)::int + 1 AS next_number
+    FROM ingresos
+    WHERE empresa_id = $1
+  `;
+
+  const { rows } = await client.query(q, [empresaId]);
+
+  return String(rows[0].next_number).padStart(6, "0");
+}
+
 module.exports = {
     createIngresoTx,
     getNextNumeroViajeTx,
     createIngresoDetalleTx,
-    getIngresosPaginated
+    getIngresosPaginated,
+    getNextCorrelativoTx
 };
