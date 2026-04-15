@@ -64,7 +64,8 @@ async function getIngresosPaginated({
   page = 1,
   limit = 10,
   search = "",
-  fecha = "",
+  desde = "",
+  hasta = "",
   cliente = "",
 }) {
   const offset = (page - 1) * limit;
@@ -73,11 +74,17 @@ async function getIngresosPaginated({
   const values = [empresaId];
   let idx = 2;
 
-  if (fecha) {
-  filters.push(`DATE(it.fecha_hora_descarga) = $${idx}`);
-  values.push(fecha);
+  if (desde) {
+  filters.push(`DATE(it.fecha_hora_descarga) >= $${idx}`);
+  values.push(desde);
   idx++;
-  }
+}
+
+if (hasta) {
+  filters.push(`DATE(it.fecha_hora_descarga) <= $${idx}`);
+  values.push(hasta);
+  idx++;
+}
 
   if (cliente) {
   filters.push(`it.cliente_id = $${idx}`);
