@@ -81,7 +81,7 @@ async function getIngresosPaginated({
 
   if (cliente) {
     filters.push(`it.cliente_id = $${idx}`);
-    values.push(cliente);
+    values.push(Number(cliente));
     idx++;
   }
 
