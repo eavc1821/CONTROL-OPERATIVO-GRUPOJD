@@ -64,12 +64,26 @@ async function getIngresosPaginated({
   page = 1,
   limit = 10,
   search = "",
+  fecha = "",
+  cliente = "",
 }) {
   const offset = (page - 1) * limit;
 
   const filters = [`i.empresa_id = $1`];
   const values = [empresaId];
   let idx = 2;
+
+  if (fecha) {
+  filters.push(`DATE(it.fecha_hora_descarga) = $${idx}`);
+  values.push(fecha);
+  idx++;
+  }
+
+  if (cliente) {
+    filters.push(`it.cliente_id = $${idx}`);
+    values.push(cliente);
+    idx++;
+  }
 
   if (search) {
     filters.push(`i.correlativo ILIKE $${idx}`);

@@ -61,6 +61,8 @@ async function list(ctx, query) {
     page,
     limit,
     search: query.search || "",
+    fecha: query.fecha || "",
+    cliente: query.cliente || "",
   });
 
   return {
