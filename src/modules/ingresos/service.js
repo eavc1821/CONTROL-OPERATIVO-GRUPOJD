@@ -62,7 +62,7 @@ async function list(ctx, query) {
     limit,
     search: query.search || "",
     fecha: query.fecha || "",
-    cliente: query.cliente || "",
+    cliente: query.cliente ? Number(query.cliente) : null,
   });
 
   return {

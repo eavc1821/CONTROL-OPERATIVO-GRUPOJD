@@ -80,10 +80,10 @@ async function getIngresosPaginated({
   }
 
   if (cliente) {
-    filters.push(`it.cliente_id = $${idx}`);
-    values.push(Number(cliente));
-    idx++;
-  }
+  filters.push(`it.cliente_id = $${idx}`);
+  values.push(cliente);
+  idx++;
+}
 
   if (search) {
     filters.push(`i.correlativo ILIKE $${idx}`);
