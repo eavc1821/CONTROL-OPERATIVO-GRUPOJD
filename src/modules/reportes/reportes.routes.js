@@ -43,4 +43,12 @@ router.get("/rango", auth, empresa, ctrl.reporteRango);
 // GET /reportes/rango/excel
 router.post("/rango/excel", auth, empresa, ctrl.reporteRangoExcel);
 
+// Dashboard exclusivo transporte
+router.get(
+  "/dashboard-transporte",
+  auth,
+  empresa,
+  ctrl.dashboardTransporte
+);
+
 module.exports = router;

@@ -1199,6 +1199,66 @@ async function getReporteRangoStream({
 }
 
 
+async function getResumenTransporte(empresaId, desde, hasta) {
+  const { rows } = await pool.query(`
+    SELECT 
+      COUNT(*) AS total_viajes,
+
+      COALESCE(SUM(c.precio_viaje),0) AS total_ingresos,
+
+      (
+        SELECT COALESCE(SUM(s.total),0)
+        FROM solicitudes s
+        WHERE s.empresa_id = $1
+        AND LOWER(s.estado) IN ('aprobada','pagada')
+        AND s.fecha_solicitud BETWEEN $2 AND $3
+      ) AS total_gastos
+
+    FROM ingresos_transporte it
+    JOIN ingresos i ON i.id = it.ingreso_id
+    JOIN clientes c ON c.id = it.cliente_id
+    WHERE i.empresa_id = $1
+    AND i.fecha_hora_descarga BETWEEN $2 AND $3
+  `, [empresaId, desde, hasta]);
+
+  return rows[0];
+}
+
+async function getRentabilidadPorUnidad(empresaId) {
+  const { rows } = await pool.query(`
+    SELECT 
+      ci.id,
+      ci.placa,
+      COUNT(*) AS viajes,
+      COALESCE(SUM(i.monto_ingreso),0) AS ingresos,
+      COALESCE(SUM(g.monto),0) AS gastos,
+      COALESCE(SUM(i.monto_ingreso),0) - COALESCE(SUM(g.monto),0) AS utilidad
+    FROM ingresos_transporte it
+    JOIN ingresos i ON i.id = it.ingreso_id
+    JOIN cisternas ci ON ci.id = it.cisterna_id
+    LEFT JOIN gastos_transporte g ON g.ingreso_id = i.id
+    WHERE i.empresa_id = $1
+    GROUP BY ci.id, ci.placa
+    ORDER BY utilidad DESC
+  `, [empresaId]);
+
+  return rows;
+}
+
+async function getViajesPorDia(empresaId) {
+  const { rows } = await pool.query(`
+    SELECT 
+      DATE(it.fecha_hora_descarga) AS fecha,
+      COUNT(*) AS viajes
+    FROM ingresos_transporte it
+    JOIN ingresos i ON i.id = it.ingreso_id
+    WHERE i.empresa_id = $1
+    GROUP BY fecha
+    ORDER BY fecha ASC
+  `, [empresaId]);
+
+  return rows;
+}
 
 
 module.exports = {
@@ -1221,5 +1281,8 @@ module.exports = {
   getReporteRango,
   getReporteSolicitudesCompleto,
   getEmpresaNombre,
-  getReporteRangoStream
+  getReporteRangoStream,
+  getResumenTransporte,
+  getRentabilidadPorUnidad,
+  getViajesPorDia
 };

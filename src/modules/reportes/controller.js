@@ -350,6 +350,30 @@ async function reporteRangoExcel(req, res, next) {
   }
 }
 
+
+async function dashboardTransporte(req, res, next) {
+  try {
+    const ctx = {
+      empresaId: req.empresa_id,
+      empresaIds: req.empresa_ids,
+      modo: req.empresaModo || 'EMPRESA'
+    };
+
+    const data = await service.getDashboardTransporte(ctx, req.query);
+
+    res.json({
+      ok: true,
+      data,
+      empresaContexto: {
+        id: req.empresa_id,
+        tipo: req.empresaTipo
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   resumen,
   totalesProveedor,
@@ -363,5 +387,6 @@ module.exports = {
   proveedoresReporte,
   proveedorPerfil,
   reporteRango,
-  reporteRangoExcel
+  reporteRangoExcel,
+  dashboardTransporte
 };

@@ -226,6 +226,90 @@ exportReporteRangoExcel: async (ctx) => {
 );
 },
 
+
+getDashboardTransporte: async (ctx, query) => {
+  assertCtx(ctx);
+
+  const { empresaId } = ctx;
+
+  // ✅ RANGO DE FECHAS (obligatorio)
+  const desde = query?.desde || new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const hasta = query?.hasta || new Date();
+
+  // ⚠️ convertir a formato YYYY-MM-DD
+  const formatDate = (d) => {
+    const date = new Date(d);
+    return date.toISOString().split("T")[0];
+  };
+
+  const desdeFmt = formatDate(desde);
+  const hastaFmt = formatDate(hasta);
+
+  // ✅ KPIs principales
+  const resumen = await repo.getResumenTransporte(
+    empresaId,
+    desdeFmt,
+    hastaFmt
+  );
+
+  // ✅ Serie temporal
+  const viajesPorDia = await repo.getViajesPorDia(
+    empresaId,
+    desdeFmt,
+    hastaFmt
+  );
+
+  // calcular rango anterior
+    const desdeDate = new Date(desdeFmt);
+    const hastaDate = new Date(hastaFmt);
+
+    const diffTime = hastaDate - desdeDate;
+
+    const prevHasta = new Date(desdeDate - 1);
+    const prevDesde = new Date(prevHasta - diffTime);
+
+    const format = (d) => d.toISOString().split("T")[0];
+
+    const prevResumen = await repo.getResumenTransporte(
+      empresaId,
+      format(prevDesde),
+      format(prevHasta)
+    );
+
+  return {
+    rango: {
+      desde: desdeFmt,
+      hasta: hastaFmt
+    },
+
+    kpis: {
+      total_viajes: Number(resumen.total_viajes || 0),
+      total_ingresos: Number(resumen.total_ingresos || 0),
+      total_gastos: Number(resumen.total_gastos || 0),
+      utilidad:
+        Number(resumen.total_ingresos || 0) -
+        Number(resumen.total_gastos || 0),
+
+      // 🔥 KPI extra útil
+      ingreso_promedio_por_viaje:
+        resumen.total_viajes > 0
+          ? Number(resumen.total_ingresos) / Number(resumen.total_viajes)
+          : 0,
+    },
+
+    comparativo: {
+      ingresos: Number(prevResumen.total_ingresos || 0),
+      gastos: Number(prevResumen.total_gastos || 0),
+      utilidad:
+        Number(prevResumen.total_ingresos || 0) -
+        Number(prevResumen.total_gastos || 0),
+    },
+
+    // 📊 para gráficas
+    viajesPorDia
+  };
+},
+
 };
 
 
