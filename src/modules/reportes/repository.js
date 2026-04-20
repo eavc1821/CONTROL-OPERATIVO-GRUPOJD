@@ -1216,9 +1216,9 @@ async function getResumenTransporte(empresaId, desde, hasta) {
 
     FROM ingresos_transporte it
     JOIN ingresos i ON i.id = it.ingreso_id
-    JOIN clientes c ON c.id = it.cliente_id
+    JOIN clientes_ingresos c ON c.id = it.cliente_id
     WHERE i.empresa_id = $1
-    AND i.fecha_hora_descarga BETWEEN $2 AND $3
+    AND DATE(it.fecha_hora_descarga) BETWEEN $2 AND $3
   `, [empresaId, desde, hasta]);
 
   return rows[0];
@@ -1245,7 +1245,7 @@ async function getRentabilidadPorUnidad(empresaId) {
   return rows;
 }
 
-async function getViajesPorDia(empresaId) {
+async function getViajesPorDia(empresaId, desde, hasta) {
   const { rows } = await pool.query(`
     SELECT 
       DATE(it.fecha_hora_descarga) AS fecha,
@@ -1253,9 +1253,10 @@ async function getViajesPorDia(empresaId) {
     FROM ingresos_transporte it
     JOIN ingresos i ON i.id = it.ingreso_id
     WHERE i.empresa_id = $1
+    AND DATE(it.fecha_hora_descarga) BETWEEN $2 AND $3
     GROUP BY fecha
     ORDER BY fecha ASC
-  `, [empresaId]);
+  `, [empresaId, desde, hasta]);
 
   return rows;
 }
