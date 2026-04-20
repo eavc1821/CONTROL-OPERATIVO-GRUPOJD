@@ -137,7 +137,8 @@ async function dashboard(req, res, next) {
       },
       empresaContexto: {
         id: req.empresa_id,
-        tipo: req.empresaTipo
+        tipo: req.empresaTipo,
+        esHijaTransporteJD: !!req.esHijaTransporteJD
       }
     });
   } catch (err) {
