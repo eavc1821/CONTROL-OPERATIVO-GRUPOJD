@@ -286,6 +286,7 @@ getDashboardTransporte: async (ctx, query) => {
       total_viajes: Number(resumen.total_viajes || 0),
       total_ingresos: Number(resumen.total_ingresos || 0),
       total_gastos: Number(resumen.total_gastos || 0),
+      total_viaticos: Number(resumen.total_viaticos || 0),
       utilidad:
         Number(resumen.total_ingresos || 0) -
         Number(resumen.total_gastos || 0),
@@ -311,6 +312,5 @@ getDashboardTransporte: async (ctx, query) => {
 },
 
 };
-
 
 

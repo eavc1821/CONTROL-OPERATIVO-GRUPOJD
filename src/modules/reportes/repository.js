@@ -1201,24 +1201,31 @@ async function getReporteRangoStream({
 
 async function getResumenTransporte(empresaId, desde, hasta) {
   const { rows } = await pool.query(`
-    SELECT 
-      COUNT(*) AS total_viajes,
-
-      COALESCE(SUM(c.precio_viaje),0) AS total_ingresos,
-
-      (
-        SELECT COALESCE(SUM(s.total),0)
-        FROM solicitudes s
-        WHERE s.empresa_id = $1
-        AND LOWER(s.estado) IN ('aprobada','pagada')
-        AND s.fecha_solicitud BETWEEN $2 AND $3
-      ) AS total_gastos
-
-    FROM ingresos_transporte it
-    JOIN ingresos i ON i.id = it.ingreso_id
-    JOIN clientes_ingresos c ON c.id = it.cliente_id
-    WHERE i.empresa_id = $1
-    AND DATE(it.fecha_hora_descarga) BETWEEN $2 AND $3
+    WITH resumen_viajes AS (
+      SELECT
+        COUNT(*) AS total_viajes,
+        COALESCE(SUM(c.precio_viaje), 0) AS total_ingresos,
+        COALESCE(SUM(COALESCE(it.viaticos, 3500)), 0) AS total_viaticos
+      FROM ingresos_transporte it
+      JOIN ingresos i ON i.id = it.ingreso_id
+      JOIN clientes_ingresos c ON c.id = it.cliente_id
+      WHERE i.empresa_id = $1
+      AND DATE(it.fecha_hora_descarga) BETWEEN $2 AND $3
+    ),
+    resumen_solicitudes AS (
+      SELECT COALESCE(SUM(s.total), 0) AS total_solicitudes
+      FROM solicitudes s
+      WHERE s.empresa_id = $1
+      AND LOWER(s.estado) IN ('aprobada', 'pagada')
+      AND s.fecha_solicitud BETWEEN $2 AND $3
+    )
+    SELECT
+      rv.total_viajes,
+      rv.total_ingresos,
+      rv.total_viaticos,
+      rs.total_solicitudes + rv.total_viaticos AS total_gastos
+    FROM resumen_viajes rv
+    CROSS JOIN resumen_solicitudes rs
   `, [empresaId, desde, hasta]);
 
   return rows[0];

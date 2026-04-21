@@ -5,6 +5,7 @@ const createIngresoSchema = z.object({
   cliente_id: z.coerce.number(),
   operador_id: z.coerce.number(),
   cisterna_id: z.coerce.number(),
+  viaticos: z.coerce.number().nonnegative().optional().default(3500),
 });
 
 module.exports = {
