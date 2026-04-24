@@ -99,9 +99,11 @@ getDashboard: async (ctx) => {
 
   // 🔹 Resumen por empresa (solo PADRE)
   let resumenEmpresas = [];
+  let desempenoEmpresas = [];
 
   if (modo === "AGREGADO") {
     resumenEmpresas = await repo.getResumenPorEmpresa(empresaIds);
+    desempenoEmpresas = await repo.getDesempenoEmpresas(empresaIds);
   }
 
   // 🔹 Datos comunes (HIJA y PADRE)
@@ -144,7 +146,8 @@ const monthly = await repo.getMensual(empresaId, empresaIds, limite);
     ranking,
     cashflow,
     detalle,
-    resumenEmpresas
+    resumenEmpresas,
+    desempenoEmpresas
   };
 },
 
@@ -312,5 +315,4 @@ getDashboardTransporte: async (ctx, query) => {
 },
 
 };
-
 

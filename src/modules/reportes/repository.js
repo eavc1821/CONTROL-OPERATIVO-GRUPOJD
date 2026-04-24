@@ -629,6 +629,68 @@ async function getResumenPorEmpresa(empresaIds = []) {
   return rows;
 }
 
+async function getDesempenoEmpresas(empresaIds = []) {
+  const { rows } = await pool.query(`
+    WITH compras AS (
+      SELECT
+        v.empresa_id,
+        COALESCE(SUM(v.total_solicitud), 0) AS total_solicitado,
+        COALESCE(SUM(v.total_pagado), 0) AS total_pagado,
+        COALESCE(SUM(v.saldo_restante), 0) AS saldo_pendiente
+      FROM vw_total_pagado_por_solicitud v
+      WHERE v.empresa_id = ANY($1)
+      GROUP BY v.empresa_id
+    ),
+    transporte AS (
+      SELECT
+        i.empresa_id,
+        COUNT(*) AS total_viajes,
+        COALESCE(SUM(c.precio_viaje), 0) AS total_ingresos,
+        COALESCE(SUM(COALESCE(it.viaticos, 3500)), 0) AS total_viaticos
+      FROM ingresos_transporte it
+      JOIN ingresos i ON i.id = it.ingreso_id
+      JOIN clientes_ingresos c ON c.id = it.cliente_id
+      WHERE i.empresa_id = ANY($1)
+      GROUP BY i.empresa_id
+    )
+    SELECT
+      e.id AS empresa_id,
+      e.nombre AS empresa,
+      e.parent_id,
+      COALESCE(cp.total_solicitado, 0) AS total_solicitado,
+      COALESCE(cp.total_pagado, 0) AS total_pagado,
+      COALESCE(cp.saldo_pendiente, 0) AS saldo_pendiente,
+      COALESCE(tr.total_viajes, 0) AS total_viajes,
+      COALESCE(tr.total_ingresos, 0) AS total_ingresos,
+      COALESCE(tr.total_viaticos, 0) AS total_viaticos,
+      COALESCE(cp.total_solicitado, 0) + COALESCE(tr.total_viaticos, 0) AS total_gastos,
+      COALESCE(tr.total_ingresos, 0)
+        - (COALESCE(cp.total_solicitado, 0) + COALESCE(tr.total_viaticos, 0)) AS utilidad,
+      CASE
+        WHEN COALESCE(tr.total_ingresos, 0) > 0 THEN (
+          (
+            COALESCE(tr.total_ingresos, 0)
+            - (COALESCE(cp.total_solicitado, 0) + COALESCE(tr.total_viaticos, 0))
+          ) / COALESCE(tr.total_ingresos, 0)
+        ) * 100
+        ELSE 0
+      END AS margen,
+      CASE
+        WHEN e.parent_id = 6 OR COALESCE(tr.total_viajes, 0) > 0 THEN true
+        ELSE false
+      END AS es_transporte
+    FROM empresas e
+    LEFT JOIN compras cp
+      ON cp.empresa_id = e.id
+    LEFT JOIN transporte tr
+      ON tr.empresa_id = e.id
+    WHERE e.id = ANY($1)
+    ORDER BY utilidad DESC, total_pagado DESC;
+  `, [empresaIds]);
+
+  return rows;
+}
+
 
 async function getReporteRango({
   empresaId,
@@ -1286,6 +1348,7 @@ module.exports = {
   getDashboardKPIs,
   getDashboardDetalle,
   getResumenPorEmpresa,
+  getDesempenoEmpresas,
   getReporteRango,
   getReporteSolicitudesCompleto,
   getEmpresaNombre,
