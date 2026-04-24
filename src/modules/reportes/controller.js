@@ -133,7 +133,9 @@ async function dashboard(req, res, next) {
         paymentTypes: data.paymentTypes || [],
         states: data.states || [],
         cashflow: data.cashflow || [],
-        detalle: data.detalle || []
+        detalle: data.detalle || [],
+        resumenEmpresas: data.resumenEmpresas || [],
+        desempenoEmpresas: data.desempenoEmpresas || []
       },
       empresaContexto: {
         id: req.empresa_id,

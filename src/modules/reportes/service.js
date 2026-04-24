@@ -96,12 +96,13 @@ getDashboard: async (ctx) => {
 
   // 🔹 Desestructurar primero (OBLIGATORIO)
   const { empresaId, empresaIds, modo } = ctx;
+  const esPadre = Array.isArray(empresaIds) && empresaIds.length > 1;
 
   // 🔹 Resumen por empresa (solo PADRE)
   let resumenEmpresas = [];
   let desempenoEmpresas = [];
 
-  if (modo === "AGREGADO") {
+  if (esPadre) {
     resumenEmpresas = await repo.getResumenPorEmpresa(empresaIds);
     desempenoEmpresas = await repo.getDesempenoEmpresas(empresaIds);
   }
@@ -109,8 +110,8 @@ getDashboard: async (ctx) => {
   // 🔹 Datos comunes (HIJA y PADRE)
   const resumen = await repo.getResumen(empresaId);
   const kpis = await repo.getDashboardKPIs(empresaId, empresaIds);
-  const limite = modo === "AGREGADO" ? 12 : 6;
-const monthly = await repo.getMensual(empresaId, empresaIds, limite);
+  const limite = esPadre ? 12 : 6;
+  const monthly = await repo.getMensual(empresaId, empresaIds, limite);
   const providers = await repo.getPorProveedor(empresaId, empresaIds);
   const paymentTypes = await repo.getTotalesPorTipoPago(empresaId);
   const ranking = await repo.getRanking(empresaId, empresaIds);
@@ -131,7 +132,7 @@ const monthly = await repo.getMensual(empresaId, empresaIds, limite);
   // 🔹 Detalle SOLO para empresa HIJA
   let detalle = [];
 
-  if (modo !== "AGREGADO") {
+  if (!esPadre) {
     detalle = await repo.getDashboardDetalle(empresaId, empresaIds);
   }
 
@@ -315,4 +316,3 @@ getDashboardTransporte: async (ctx, query) => {
 },
 
 };
-
