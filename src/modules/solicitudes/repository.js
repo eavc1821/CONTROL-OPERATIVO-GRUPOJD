@@ -95,7 +95,9 @@ async function findAll(empresaId, {
   limit = 10,
   search,
   estado,
-  categoria
+  categoria,
+  desde,
+  hasta
 }) {
   const offset = (page - 1) * limit;
 
@@ -121,6 +123,32 @@ async function findAll(empresaId, {
   if (categoria) {
     conditions.push(`s.categoria_id = $${idx}`);
     params.push(Number(categoria));
+    idx++;
+  }
+
+  if (desde) {
+    conditions.push(`
+      EXISTS (
+        SELECT 1
+        FROM solicitudes solicitud
+        WHERE solicitud.id = s.solicitud_id
+          AND DATE(solicitud.fecha_solicitud) >= $${idx}
+      )
+    `);
+    params.push(desde);
+    idx++;
+  }
+
+  if (hasta) {
+    conditions.push(`
+      EXISTS (
+        SELECT 1
+        FROM solicitudes solicitud
+        WHERE solicitud.id = s.solicitud_id
+          AND DATE(solicitud.fecha_solicitud) <= $${idx}
+      )
+    `);
+    params.push(hasta);
     idx++;
   }
 

@@ -24,8 +24,16 @@ async function list(req, res, next) {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 10;
 
-    const { search, estado, categoria } = req.query;
-    const result = await service.list(ctx, { page, limit, search, estado, categoria});
+    const { search, estado, categoria, desde, hasta } = req.query;
+    const result = await service.list(ctx, {
+      page,
+      limit,
+      search,
+      estado,
+      categoria,
+      desde,
+      hasta
+    });
 
     res.json({ 
       ok: true, 
