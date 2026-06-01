@@ -103,7 +103,7 @@ app.use("/api/v1/bitacora", bitacoraRoutes);
 app.use("/api/v1/cuentas-financieras", cuentasFinancierasRoutes);
 app.use("/api/v1/ingresos", ingresosRoutes);
 app.use("/api/v1", catalogosRoutes);
-app.use(express.static("public"));
+app.use(express.static("public", { index: false }));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // NO cache para index.html (CRÍTICO)
