@@ -42,9 +42,11 @@ async function createIngresoDetalleTx(client, data) {
       operador_id,
       cisterna_id,
       numero_viaje,
-      viaticos
+      viaticos,
+      depreciacion,
+      g_admin
     )
-    VALUES ($1,$2,$3,$4,$5,$6,$7)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
     RETURNING *
   `;
 
@@ -56,6 +58,8 @@ async function createIngresoDetalleTx(client, data) {
     data.cisterna_id,
     data.numero_viaje,
     data.viaticos ?? 3500,
+    2500,
+    1680,
   ]);
 
   return rows[0];
@@ -111,7 +115,9 @@ if (hasta) {
       o.nombre AS operador,
       ci.placa AS cisterna,
       it.numero_viaje,
-      COALESCE(it.viaticos, 3500) AS viaticos
+      COALESCE(it.viaticos, 3500) AS viaticos,
+      COALESCE(it.depreciacion, 2500) AS depreciacion,
+      COALESCE(it.g_admin, 1680) AS g_admin
     FROM ingresos i
     JOIN ingresos_transporte it ON it.ingreso_id = i.id
     JOIN clientes_ingresos c ON c.id = it.cliente_id

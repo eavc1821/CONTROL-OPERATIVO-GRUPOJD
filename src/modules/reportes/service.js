@@ -291,6 +291,8 @@ getDashboardTransporte: async (ctx, query) => {
       total_ingresos: Number(resumen.total_ingresos || 0),
       total_gastos: Number(resumen.total_gastos || 0),
       total_viaticos: Number(resumen.total_viaticos || 0),
+      total_depreciacion: Number(resumen.total_depreciacion || 0),
+      total_g_admin: Number(resumen.total_g_admin || 0),
       utilidad:
         Number(resumen.total_ingresos || 0) -
         Number(resumen.total_gastos || 0),

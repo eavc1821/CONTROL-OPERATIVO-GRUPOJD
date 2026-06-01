@@ -646,7 +646,9 @@ async function getDesempenoEmpresas(empresaIds = []) {
         i.empresa_id,
         COUNT(*) AS total_viajes,
         COALESCE(SUM(c.precio_viaje), 0) AS total_ingresos,
-        COALESCE(SUM(COALESCE(it.viaticos, 3500)), 0) AS total_viaticos
+        COALESCE(SUM(COALESCE(it.viaticos, 3500)), 0) AS total_viaticos,
+        COALESCE(SUM(COALESCE(it.depreciacion, 2500)), 0) AS total_depreciacion,
+        COALESCE(SUM(COALESCE(it.g_admin, 1680)), 0) AS total_g_admin
       FROM ingresos_transporte it
       JOIN ingresos i ON i.id = it.ingreso_id
       JOIN clientes_ingresos c ON c.id = it.cliente_id
@@ -663,14 +665,29 @@ async function getDesempenoEmpresas(empresaIds = []) {
       COALESCE(tr.total_viajes, 0) AS total_viajes,
       COALESCE(tr.total_ingresos, 0) AS total_ingresos,
       COALESCE(tr.total_viaticos, 0) AS total_viaticos,
-      COALESCE(cp.total_solicitado, 0) + COALESCE(tr.total_viaticos, 0) AS total_gastos,
+      COALESCE(tr.total_depreciacion, 0) AS total_depreciacion,
+      COALESCE(tr.total_g_admin, 0) AS total_g_admin,
+      COALESCE(cp.total_solicitado, 0)
+        + COALESCE(tr.total_viaticos, 0)
+        + COALESCE(tr.total_depreciacion, 0)
+        + COALESCE(tr.total_g_admin, 0) AS total_gastos,
       COALESCE(tr.total_ingresos, 0)
-        - (COALESCE(cp.total_solicitado, 0) + COALESCE(tr.total_viaticos, 0)) AS utilidad,
+        - (
+          COALESCE(cp.total_solicitado, 0)
+          + COALESCE(tr.total_viaticos, 0)
+          + COALESCE(tr.total_depreciacion, 0)
+          + COALESCE(tr.total_g_admin, 0)
+        ) AS utilidad,
       CASE
         WHEN COALESCE(tr.total_ingresos, 0) > 0 THEN (
           (
             COALESCE(tr.total_ingresos, 0)
-            - (COALESCE(cp.total_solicitado, 0) + COALESCE(tr.total_viaticos, 0))
+            - (
+              COALESCE(cp.total_solicitado, 0)
+              + COALESCE(tr.total_viaticos, 0)
+              + COALESCE(tr.total_depreciacion, 0)
+              + COALESCE(tr.total_g_admin, 0)
+            )
           ) / COALESCE(tr.total_ingresos, 0)
         ) * 100
         ELSE 0
@@ -1267,7 +1284,9 @@ async function getResumenTransporte(empresaId, desde, hasta) {
       SELECT
         COUNT(*) AS total_viajes,
         COALESCE(SUM(c.precio_viaje), 0) AS total_ingresos,
-        COALESCE(SUM(COALESCE(it.viaticos, 3500)), 0) AS total_viaticos
+        COALESCE(SUM(COALESCE(it.viaticos, 3500)), 0) AS total_viaticos,
+        COALESCE(SUM(COALESCE(it.depreciacion, 2500)), 0) AS total_depreciacion,
+        COALESCE(SUM(COALESCE(it.g_admin, 1680)), 0) AS total_g_admin
       FROM ingresos_transporte it
       JOIN ingresos i ON i.id = it.ingreso_id
       JOIN clientes_ingresos c ON c.id = it.cliente_id
@@ -1285,7 +1304,12 @@ async function getResumenTransporte(empresaId, desde, hasta) {
       rv.total_viajes,
       rv.total_ingresos,
       rv.total_viaticos,
-      rs.total_solicitudes + rv.total_viaticos AS total_gastos
+      rv.total_depreciacion,
+      rv.total_g_admin,
+      rs.total_solicitudes
+        + rv.total_viaticos
+        + rv.total_depreciacion
+        + rv.total_g_admin AS total_gastos
     FROM resumen_viajes rv
     CROSS JOIN resumen_solicitudes rs
   `, [empresaId, desde, hasta]);
