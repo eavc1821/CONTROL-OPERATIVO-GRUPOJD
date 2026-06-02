@@ -20,15 +20,17 @@ async function createIngresoTx(client, data) {
 }
 
 
-async function getNextNumeroViajeTx(client, empresaId) {
+async function getNextNumeroViajeTx(client, empresaId, fechaHoraDescarga) {
   const q = `
     SELECT COALESCE(MAX(it.numero_viaje), 0) + 1 AS next_viaje
     FROM ingresos_transporte it
     JOIN ingresos i ON i.id = it.ingreso_id
     WHERE i.empresa_id = $1
+      AND it.fecha_hora_descarga >= date_trunc('month', $2::timestamp)
+      AND it.fecha_hora_descarga < date_trunc('month', $2::timestamp) + INTERVAL '1 month'
   `;
 
-  const { rows } = await client.query(q, [empresaId]);
+  const { rows } = await client.query(q, [empresaId, fechaHoraDescarga]);
   return Number(rows[0].next_viaje);
 }
 

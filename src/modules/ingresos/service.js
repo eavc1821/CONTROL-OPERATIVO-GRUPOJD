@@ -28,7 +28,8 @@ async function create(ctx, payload) {
 
     const numeroViaje = await repo.getNextNumeroViajeTx(
       client,
-      ctx.empresaId
+      ctx.empresaId,
+      payload.fecha_hora_descarga
     );
 
     const detalle = await repo.createIngresoDetalleTx(client, {
