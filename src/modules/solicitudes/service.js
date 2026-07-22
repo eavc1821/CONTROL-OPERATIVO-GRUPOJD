@@ -536,12 +536,17 @@ async function registrarPago(ctx, solicitudId, payload, file) {
       const correlativoIngresado = BigInt(correlativoIngresadoRaw);
 
       // 🔒 Validación REAL de negocio
-      if (
-        correlativoIngresado < correlativoDesde ||
-        correlativoIngresado > correlativoHasta
-      ) {
+      if (correlativoIngresado < correlativoDesde) {
         throw new Error(
-          "El número de factura está fuera del rango autorizado del proveedor"
+          `El correlativo ${correlativoIngresadoRaw} está por debajo del rango autorizado ` +
+          `(${matchDesde[1]} - ${matchHasta[1]})`
+        );
+      }
+
+      if (correlativoIngresado > correlativoHasta) {
+        throw new Error(
+          `El correlativo ${correlativoIngresadoRaw} está por encima del rango autorizado ` +
+          `(${matchDesde[1]} - ${matchHasta[1]})`
         );
       }
 
