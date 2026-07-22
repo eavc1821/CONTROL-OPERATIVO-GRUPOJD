@@ -454,6 +454,21 @@ function normalizarFactura(valor) {
   return valor.replace(/-/g, "").trim();
 }
 
+// El correlativo fiscal son los últimos 8 dígitos. El valor puede llegar como
+// correlativo solamente ("00110081") o como factura completa
+// ("000-003-01-00110081").
+function extraerCorrelativoFactura(valor, longitud = 8) {
+  const digitos = String(valor ?? "").replace(/\D/g, "");
+
+  if (digitos.length < longitud) {
+    throw new Error(
+      `El número de factura debe contener al menos ${longitud} dígitos`
+    );
+  }
+
+  return digitos.slice(-longitud);
+}
+
 // 👉 Registrar pago (solo crédito y aprobada)
 async function registrarPago(ctx, solicitudId, payload, file) {
   assertCtx(ctx);
@@ -502,20 +517,23 @@ async function registrarPago(ctx, solicitudId, payload, file) {
       }
 
       // 🔹 Extraer correlativos DESDE / HASTA
-      const matchDesde = rangoDesdeRaw.match(/(\d+)$/);
-      const matchHasta = rangoHastaRaw.match(/(\d+)$/);
+      const matchDesde = rangoDesdeRaw.match(/(\d{8})$/);
+      const matchHasta = rangoHastaRaw.match(/(\d{8})$/);
 
       if (!matchDesde || !matchHasta) {
         throw new Error("El rango de facturación del proveedor es inválido");
       }
 
+      const correlativoLength = matchHasta[1].length;
       const correlativoDesde = BigInt(matchDesde[1]);
       const correlativoHasta = BigInt(matchHasta[1]);
 
-      // 🔹 Correlativo ingresado por el usuario
-      const correlativoIngresado = BigInt(
-        payload.numero_factura.replace(/\D/g, "")
+      // Se comparan únicamente los últimos 8 dígitos del correlativo.
+      const correlativoIngresadoRaw = extraerCorrelativoFactura(
+        payload.numero_factura,
+        correlativoLength
       );
+      const correlativoIngresado = BigInt(correlativoIngresadoRaw);
 
       // 🔒 Validación REAL de negocio
       if (
@@ -528,7 +546,6 @@ async function registrarPago(ctx, solicitudId, payload, file) {
       }
 
       // 🔹 Reconstruir número completo SOLO para guardar
-      const correlativoLength = matchHasta[1].length;
       const prefijo = normalizarFactura(rangoHastaRaw).slice(
         0,
         normalizarFactura(rangoHastaRaw).length - correlativoLength
