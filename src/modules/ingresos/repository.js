@@ -44,11 +44,12 @@ async function createIngresoDetalleTx(client, data) {
       operador_id,
       cisterna_id,
       numero_viaje,
+      precio_viaje_aplicado,
       viaticos,
       depreciacion,
       g_admin
     )
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
     RETURNING *
   `;
 
@@ -59,6 +60,7 @@ async function createIngresoDetalleTx(client, data) {
     data.operador_id,
     data.cisterna_id,
     data.numero_viaje,
+    data.precio_viaje_aplicado,
     data.viaticos ?? 3500,
     2500,
     1680,
@@ -117,6 +119,7 @@ if (hasta) {
       o.nombre AS operador,
       ci.placa AS cisterna,
       it.numero_viaje,
+      it.precio_viaje_aplicado,
       COALESCE(it.viaticos, 3500) AS viaticos,
       COALESCE(it.depreciacion, 2500) AS depreciacion,
       COALESCE(it.g_admin, 1680) AS g_admin

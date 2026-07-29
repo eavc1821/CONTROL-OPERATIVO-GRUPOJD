@@ -645,13 +645,12 @@ async function getDesempenoEmpresas(empresaIds = []) {
       SELECT
         i.empresa_id,
         COUNT(*) AS total_viajes,
-        COALESCE(SUM(c.precio_viaje), 0) AS total_ingresos,
+        COALESCE(SUM(it.precio_viaje_aplicado), 0) AS total_ingresos,
         COALESCE(SUM(COALESCE(it.viaticos, 3500)), 0) AS total_viaticos,
         COALESCE(SUM(COALESCE(it.depreciacion, 2500)), 0) AS total_depreciacion,
         COALESCE(SUM(COALESCE(it.g_admin, 1680)), 0) AS total_g_admin
       FROM ingresos_transporte it
       JOIN ingresos i ON i.id = it.ingreso_id
-      JOIN clientes_ingresos c ON c.id = it.cliente_id
       WHERE i.empresa_id = ANY($1)
       GROUP BY i.empresa_id
     )
@@ -1283,13 +1282,12 @@ async function getResumenTransporte(empresaId, desde, hasta) {
     WITH resumen_viajes AS (
       SELECT
         COUNT(*) AS total_viajes,
-        COALESCE(SUM(c.precio_viaje), 0) AS total_ingresos,
+        COALESCE(SUM(it.precio_viaje_aplicado), 0) AS total_ingresos,
         COALESCE(SUM(COALESCE(it.viaticos, 3500)), 0) AS total_viaticos,
         COALESCE(SUM(COALESCE(it.depreciacion, 2500)), 0) AS total_depreciacion,
         COALESCE(SUM(COALESCE(it.g_admin, 1680)), 0) AS total_g_admin
       FROM ingresos_transporte it
       JOIN ingresos i ON i.id = it.ingreso_id
-      JOIN clientes_ingresos c ON c.id = it.cliente_id
       WHERE i.empresa_id = $1
       AND DATE(it.fecha_hora_descarga) BETWEEN $2 AND $3
     ),

@@ -5,6 +5,9 @@ const createIngresoSchema = z.object({
   cliente_id: z.coerce.number(),
   operador_id: z.coerce.number(),
   cisterna_id: z.coerce.number(),
+  precio_viaje_aplicado: z.coerce
+    .number()
+    .positive("El valor del viaje debe ser mayor a 0"),
   viaticos: z.coerce.number().nonnegative().optional().default(3500),
 });
 
