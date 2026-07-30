@@ -546,6 +546,13 @@ async function getDashboardKPIs(empresaId, empresaIds = [], desde, hasta) {
       COALESCE(SUM(saldo_restante), 0) AS saldo_pendiente,
       COUNT(*) AS total_solicitudes,
       COALESCE((
+        SELECT COUNT(*)
+        FROM ingresos_transporte it
+        JOIN ingresos i ON i.id = it.ingreso_id
+        WHERE ($1 = 0 OR i.empresa_id = ANY($2))
+          AND DATE(it.fecha_hora_descarga) BETWEEN $3 AND $4
+      ), 0) AS total_viajes,
+      COALESCE((
         SELECT SUM(it.precio_viaje_aplicado)
         FROM ingresos_transporte it
         JOIN ingresos i ON i.id = it.ingreso_id
@@ -563,6 +570,7 @@ async function getDashboardKPIs(empresaId, empresaIds = [], desde, hasta) {
     total_pagado: Number(rows[0].total_pagado),
     saldo_pendiente: Number(rows[0].saldo_pendiente),
     total_solicitudes: Number(rows[0].total_solicitudes),
+    total_viajes: Number(rows[0].total_viajes),
     total_ingresos: Number(rows[0].total_ingresos),
   };
 }
