@@ -30,7 +30,7 @@ async function getResumen(empresaId) {
 }
 
 
-async function getPorProveedor(empresaId, empresaIds = []) {
+async function getPorProveedor(empresaId, empresaIds = [], desde, hasta) {
   const { rows } = await pool.query(`
     SELECT
       p.nombre AS proveedor,
@@ -42,10 +42,11 @@ async function getPorProveedor(empresaId, empresaIds = []) {
     $1 = 0
     OR s.empresa_id = ANY($2)
   )
+    AND s.fecha_solicitud BETWEEN $3 AND $4
     GROUP BY p.nombre
     ORDER BY total_compras DESC
     LIMIT 10;
-  `, [empresaId, empresaIds]);
+  `, [empresaId, empresaIds, desde, hasta]);
 
   return rows;
 }
@@ -57,32 +58,38 @@ async function getPorTipoPago(empresaId) {
   return rows;
 }
 
-async function getMensual(empresaId, empresaIds = [], limit = 6) {
+async function getMensual(empresaId, empresaIds = [], limit = 6, desde, hasta) {
   const { rows } = await pool.query(`
     SELECT
-      v.periodo,
-      v.empresa_id,
+      DATE_TRUNC('month', s.fecha_solicitud) AS periodo,
+      s.empresa_id,
       e.nombre AS empresa,
-      v.total_solicitud,
-      COALESCE(SUM(p.monto), 0) AS total_pagado,
-      v.total_solicitud - COALESCE(SUM(p.monto), 0) AS saldo
-    FROM vw_totales_mensuales v
-    JOIN empresas e ON e.id = v.empresa_id
-    LEFT JOIN pagos p
-      ON p.empresa_id = v.empresa_id
-     AND DATE_TRUNC('month', p.fecha_pago) = v.periodo
+      COALESCE(SUM(s.total), 0) AS total_solicitud,
+      COALESCE(SUM((
+        SELECT SUM(p.monto)
+        FROM pagos p
+        WHERE p.solicitud_id = s.id AND p.empresa_id = s.empresa_id
+      )), 0) AS total_pagado,
+      COALESCE(SUM(s.total), 0) - COALESCE(SUM((
+        SELECT SUM(p.monto)
+        FROM pagos p
+        WHERE p.solicitud_id = s.id AND p.empresa_id = s.empresa_id
+      )), 0) AS saldo
+    FROM solicitudes s
+    JOIN empresas e ON e.id = s.empresa_id
     WHERE (
       $1 = 0
-      OR v.empresa_id = ANY($2)
+      OR s.empresa_id = ANY($2)
     )
+    AND s.estado IN ('aprobada', 'pagada')
+    AND s.fecha_solicitud BETWEEN $4 AND $5
     GROUP BY
-      v.periodo,
-      v.empresa_id,
-      e.nombre,
-      v.total_solicitud
-    ORDER BY v.periodo DESC
+      DATE_TRUNC('month', s.fecha_solicitud),
+      s.empresa_id,
+      e.nombre
+    ORDER BY periodo DESC
     LIMIT $3;
-  `, [empresaId, empresaIds, limit]);
+  `, [empresaId, empresaIds, limit, desde, hasta]);
 
   return rows;
 }
@@ -531,26 +538,36 @@ Number(pagosAnteriorRows[0]?.pagos_mes_anterior || 0);
 }
 
 
-async function getDashboardKPIs(empresaId, empresaIds = []) {
+async function getDashboardKPIs(empresaId, empresaIds = [], desde, hasta) {
   const { rows } = await pool.query(`
     SELECT
       COALESCE(SUM(total_solicitud), 0) AS total_solicitado,
       COALESCE(SUM(total_pagado), 0) AS total_pagado,
       COALESCE(SUM(saldo_restante), 0) AS saldo_pendiente,
-      COUNT(*) AS total_solicitudes
-    FROM vw_total_pagado_por_solicitud
-    WHERE ($1 = 0 OR empresa_id = ANY($2));
-  `, [empresaId, empresaIds]);
+      COUNT(*) AS total_solicitudes,
+      COALESCE((
+        SELECT SUM(it.precio_viaje_aplicado)
+        FROM ingresos_transporte it
+        JOIN ingresos i ON i.id = it.ingreso_id
+        WHERE ($1 = 0 OR i.empresa_id = ANY($2))
+          AND DATE(it.fecha_hora_descarga) BETWEEN $3 AND $4
+      ), 0) AS total_ingresos
+    FROM vw_total_pagado_por_solicitud v
+    JOIN solicitudes s ON s.id = v.solicitud_id
+    WHERE ($1 = 0 OR v.empresa_id = ANY($2))
+      AND s.fecha_solicitud BETWEEN $3 AND $4;
+  `, [empresaId, empresaIds, desde, hasta]);
 
   return {
     total_solicitado: Number(rows[0].total_solicitado),
     total_pagado: Number(rows[0].total_pagado),
     saldo_pendiente: Number(rows[0].saldo_pendiente),
     total_solicitudes: Number(rows[0].total_solicitudes),
+    total_ingresos: Number(rows[0].total_ingresos),
   };
 }
 
-async function getDashboardDetalle(empresaId, empresaIds = []) {
+async function getDashboardDetalle(empresaId, empresaIds = [], desde, hasta) {
   const { rows } = await pool.query(`
     SELECT
       v.solicitud_id,
@@ -603,14 +620,15 @@ async function getDashboardDetalle(empresaId, empresaIds = []) {
       $1 = 0
       OR v.empresa_id = ANY($2)
     )
+    AND s.fecha_solicitud BETWEEN $3 AND $4
 
     ORDER BY s.fecha_solicitud DESC
     LIMIT 10;
-  `, [empresaId, empresaIds]);
+  `, [empresaId, empresaIds, desde, hasta]);
   return rows;
 }
 
-async function getResumenPorEmpresa(empresaIds = []) {
+async function getResumenPorEmpresa(empresaIds = [], desde, hasta) {
   const { rows } = await pool.query(`
     SELECT
       e.id AS empresa_id,
@@ -621,15 +639,18 @@ async function getResumenPorEmpresa(empresaIds = []) {
     FROM empresas e
     LEFT JOIN vw_total_pagado_por_solicitud v
       ON v.empresa_id = e.id
+    LEFT JOIN solicitudes s
+      ON s.id = v.solicitud_id
     WHERE e.id = ANY($1)
+      AND (s.fecha_solicitud BETWEEN $2 AND $3 OR s.id IS NULL)
     GROUP BY e.id, e.nombre
     ORDER BY total_pagado DESC;
-  `, [empresaIds]);
+  `, [empresaIds, desde, hasta]);
 
   return rows;
 }
 
-async function getDesempenoEmpresas(empresaIds = []) {
+async function getDesempenoEmpresas(empresaIds = [], desde, hasta) {
   const { rows } = await pool.query(`
     WITH compras AS (
       SELECT
@@ -638,7 +659,9 @@ async function getDesempenoEmpresas(empresaIds = []) {
         COALESCE(SUM(v.total_pagado), 0) AS total_pagado,
         COALESCE(SUM(v.saldo_restante), 0) AS saldo_pendiente
       FROM vw_total_pagado_por_solicitud v
+      JOIN solicitudes s ON s.id = v.solicitud_id
       WHERE v.empresa_id = ANY($1)
+        AND s.fecha_solicitud BETWEEN $2 AND $3
       GROUP BY v.empresa_id
     ),
     transporte AS (
@@ -652,6 +675,7 @@ async function getDesempenoEmpresas(empresaIds = []) {
       FROM ingresos_transporte it
       JOIN ingresos i ON i.id = it.ingreso_id
       WHERE i.empresa_id = ANY($1)
+        AND DATE(it.fecha_hora_descarga) BETWEEN $2 AND $3
       GROUP BY i.empresa_id
     )
     SELECT
@@ -702,7 +726,7 @@ async function getDesempenoEmpresas(empresaIds = []) {
       ON tr.empresa_id = e.id
     WHERE e.id = ANY($1)
     ORDER BY utilidad DESC, total_pagado DESC;
-  `, [empresaIds]);
+  `, [empresaIds, desde, hasta]);
 
   return rows;
 }

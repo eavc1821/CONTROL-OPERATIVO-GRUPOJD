@@ -114,7 +114,9 @@ async function dashboard(req, res, next) {
     const ctx = {
       empresaId: req.empresa_id,
       empresaIds: req.empresa_ids,
-      modo: req.empresaModo || (req.empresa_id === 0 ? 'GENERAL' : 'EMPRESA')
+      modo: req.empresaModo || (req.empresa_id === 0 ? 'GENERAL' : 'EMPRESA'),
+      desde: req.query.desde,
+      hasta: req.query.hasta
     };
 
     const data = await service.getDashboard(ctx);

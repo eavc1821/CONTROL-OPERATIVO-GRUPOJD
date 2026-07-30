@@ -96,6 +96,11 @@ getDashboard: async (ctx) => {
 
   // 🔹 Desestructurar primero (OBLIGATORIO)
   const { empresaId, empresaIds, modo } = ctx;
+  const today = new Date();
+  const formatDate = (date) => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+  const desde = ctx.desde || formatDate(new Date(today.getFullYear(), today.getMonth(), 1));
+  const hasta = ctx.hasta || formatDate(today);
+  if (desde > hasta) throw new Error("Rango de fechas inválido");
   const esPadre = Array.isArray(empresaIds) && empresaIds.length > 1;
 
   // 🔹 Resumen por empresa (solo PADRE)
@@ -103,16 +108,15 @@ getDashboard: async (ctx) => {
   let desempenoEmpresas = [];
 
   if (esPadre) {
-    resumenEmpresas = await repo.getResumenPorEmpresa(empresaIds);
-    desempenoEmpresas = await repo.getDesempenoEmpresas(empresaIds);
+    resumenEmpresas = await repo.getResumenPorEmpresa(empresaIds, desde, hasta);
+    desempenoEmpresas = await repo.getDesempenoEmpresas(empresaIds, desde, hasta);
   }
 
   // 🔹 Datos comunes (HIJA y PADRE)
   const resumen = await repo.getResumen(empresaId);
-  const kpis = await repo.getDashboardKPIs(empresaId, empresaIds);
-  const limite = esPadre ? 12 : 6;
-  const monthly = await repo.getMensual(empresaId, empresaIds, limite);
-  const providers = await repo.getPorProveedor(empresaId, empresaIds);
+  const kpis = await repo.getDashboardKPIs(empresaId, empresaIds, desde, hasta);
+  const monthly = await repo.getMensual(empresaId, empresaIds, 12, desde, hasta);
+  const providers = await repo.getPorProveedor(empresaId, empresaIds, desde, hasta);
   const paymentTypes = await repo.getTotalesPorTipoPago(empresaId);
   const ranking = await repo.getRanking(empresaId, empresaIds);
   const cashflow = await repo.getCashflow(empresaId, empresaIds);
@@ -133,12 +137,13 @@ getDashboard: async (ctx) => {
   let detalle = [];
 
   if (!esPadre) {
-    detalle = await repo.getDashboardDetalle(empresaId, empresaIds);
+    detalle = await repo.getDashboardDetalle(empresaId, empresaIds, desde, hasta);
   }
 
   // 🔹 Respuesta final
   return {
     modo,
+    rango: { desde, hasta },
     kpis,
     monthly,
     providers,
